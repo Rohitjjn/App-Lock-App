@@ -1,0 +1,6 @@
+{
+  "name": "App Lock",
+  "description": "Native Offline Android App Lock for high-reliability background service and security locks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
