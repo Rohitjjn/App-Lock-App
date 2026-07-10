@@ -113,36 +113,34 @@ class AppDetectorService : Service() {
         
         pollingJob = scope.launch {
             var lastCheckedApp = ""
-            var isFirstRun = true
+            var lastEventTime = System.currentTimeMillis() - 1000L * 60 * 60 // Start 1 hour back for first initialization
+            
             while (isActive) {
                 try {
+                    val queryEndTime = System.currentTimeMillis()
+                    val events = usageStatsManager.queryEvents(lastEventTime, queryEndTime)
+                    val event = UsageEvents.Event()
                     var currentApp: String? = null
-                    if (isFirstRun) {
-                        val endTime = System.currentTimeMillis()
-                        val beginTime = endTime - 1000L * 60 * 60 * 24 // 24 hours back
-                        val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, beginTime, endTime)
-                        var recentStats: android.app.usage.UsageStats? = null
-                        if (stats != null) {
-                            for (stat in stats) {
-                                if (recentStats == null || stat.lastTimeUsed > recentStats.lastTimeUsed) {
-                                    recentStats = stat
-                                }
-                            }
-                            currentApp = recentStats?.packageName
+                    var foundResume = false
+                    
+                    while (events.hasNextEvent()) {
+                        events.getNextEvent(event)
+                        if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                            currentApp = event.packageName
+                            foundResume = true
                         }
-                    } else {
-                        currentApp = getForegroundApp()
                     }
-
-                    if (currentApp != null && currentApp != lastCheckedApp) {
+                    
+                    if (foundResume && currentApp != null && currentApp != lastCheckedApp) {
                         checkAppAndLock(currentApp)
                         lastCheckedApp = currentApp
                     }
-                    isFirstRun = false
+                    
+                    lastEventTime = queryEndTime // Shift sliding window strictly forward
                 } catch (e: Exception) {
                     Log.e(TAG, "Polling error", e)
                 }
-                delay(200) // 200ms polling interval
+                delay(100) // 100ms polling interval
             }
         }
     }
@@ -152,24 +150,6 @@ class AppDetectorService : Service() {
         pollingJob = null
     }
 
-    private fun getForegroundApp(): String? {
-        val endTime = System.currentTimeMillis()
-        val beginTime = endTime - 2000 // Look back 2 seconds
-        
-        val events = usageStatsManager.queryEvents(beginTime, endTime)
-        var currentApp: String? = null
-        val event = UsageEvents.Event()
-        
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            // Event type 1 is ACTIVITY_RESUMED
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                currentApp = event.packageName
-            }
-        }
-        return currentApp
-    }
-    
     private fun checkAppAndLock(packageName: String) {
         // Exclude own app package to avoid infinite loops, and usually home launchers
         val myPackage = applicationContext.packageName
@@ -218,11 +198,17 @@ class AppDetectorService : Service() {
         
         val intent = Intent(this, LockActivity::class.java).apply {
             putExtra(LockActivity.EXTRA_PACKAGE_NAME, lockedPackageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
             addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         }
         startActivity(intent)
+
+        // Safe fallback: Clear pending flag after 1 second in case startActivity fails or LockActivity is killed early
+        scope.launch {
+            delay(1000)
+            LockSessionManager.clearLaunchPending(lockedPackageName)
+        }
     }
 
     private fun buildNotification(): Notification {

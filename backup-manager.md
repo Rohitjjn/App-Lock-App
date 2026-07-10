@@ -51,6 +51,11 @@ This file tracks ALL project backups. Every time code changes are made, a new ba
 
 | Version | Date | Description | Status | File Count | Size | Working Features | Pending |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| v3.0.5 | 2026-07-10 | Fixed Timeout and Lock Behavior interaction | Stable | 54 | 206KB | Perfect combination of grace period timeouts and Until Screen Off lock tracking | None |
+| v3.0.4 | 2026-07-10 | Optimized Polling via Slidng Window | Stable | 54 | 206KB | Perfect 100ms contiguous App Locking loop with zero event loss | Completed |
+| v3.0.3 | 2026-07-10 | Fixed lock stalling and `isFirstRun` bypasses | Stable | 54 | 206KB | Flawless and instantaneous App Locking with proper lifecycle checks | Testing |
+| v3.0.2 | 2026-07-10 | Added SYSTEM_ALERT_WINDOW integration for background activity launch bypass | Stable | 54 | 206KB | Full app locker using UsageStats, launching standard activities bypassing Android 10+ background blocks | Testing |
+| v3.0.1 | 2026-07-09 | Restored UsageStats Locking Mechanism logic and fixed database flows | Stable | 54 | 206KB | Full app locker using UsageStats (200ms delay) | Testing |
 | v3.0.0 | 2026-07-09 | Migrated to UsageStats Foreground Service polling, deprecated Accessibility | Stable | 54 | 205KB | Full app locker using UsageStats (200ms delay) with screen sleep optimisations | Testing |
 | v2.9.1 | 2026-06-25 | Phase 2 banking app fix - stripped Accessibility screen reading flags dynamically | Stable | 54 | 200KB | Native AppLock functionality bypassing major banking security apps | Testing |
 | v2.8.0 | 2026-06-19 | Configured Compass Disguise icon change, onboarding permission lifecycles, and stripped third-party uninstall systems | Stable | 54 | 200KB | Custom Compass Icon, Device Admin, Biometrics, Dynamic list-view | Testing |

@@ -78,14 +78,17 @@ object LockSessionManager {
 
         val app = context.applicationContext as? com.example.AppLockApplication
         val behavior = app?.encryptedPrefs?.getLockReLockBehavior() ?: "Until Screen Off"
-        if (behavior == "Until Screen Off") {
-            // Under "Until Screen Off" behavior, once an app is unlocked, it remains unlocked until the device screen locks.
-            // Therefore, we do not clear unlocked_packages when transitioning back to home launcher or key-switching apps.
+        val timeoutMs = app?.encryptedPrefs?.getLockTimeoutMs() ?: 0L
+        
+        if (behavior == "Until Screen Off" || timeoutMs > 0L) {
+            // If "Until Screen Off" is selected, or if a grace period timeout is active,
+            // we do NOT aggressively clear the unlocked packages here.
+            // We let `isAppLocked` handle the timeout expiration, or let `clearSessions` handle screen off.
             return
         }
 
-        // If transitioning back to launcher or our own lock app, we definitely lock any other unlocked app immediately!
-        if (packageName == "com.aistudio.applock.vqpstz" || packageName.startsWith("com.example.") || isLauncherPackage(packageName)) {
+        // Only for "Lock When Exit" WITH "Immediate Lockout (0L)", we clear aggressively!
+        if (packageName == "com.aistudio.applock.vqpstz" || packageName.startsWith("com.example.") || isLauncherPackage(packageName, context)) {
             synchronized(unlockedPackages) {
                 unlockedPackages.clear()
             }
@@ -104,7 +107,17 @@ object LockSessionManager {
         }
     }
 
-    private fun isLauncherPackage(packageName: String): Boolean {
+    private fun isLauncherPackage(packageName: String, context: android.content.Context): Boolean {
+        try {
+            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN)
+            intent.addCategory(android.content.Intent.CATEGORY_HOME)
+            val resolveInfo = context.packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+            if (resolveInfo?.activityInfo?.packageName == packageName) {
+                return true
+            }
+        } catch (e: Exception) {
+            // Fallback
+        }
         val lower = packageName.lowercase()
         return lower.contains("launcher") || lower.contains("home") || lower.contains("pixel") || lower.contains("trebuchet") || lower.contains("carlauncher")
     }
@@ -133,12 +146,19 @@ object LockSessionManager {
         }
 
         // 2. Identify if there is a recorded unlock session
-        val isUnlocked = synchronized(unlockedPackages) {
-            unlockedPackages.containsKey(packageName)
+        val unlockTime = synchronized(unlockedPackages) {
+            unlockedPackages[packageName]
         }
 
-        if (isUnlocked) {
-            // Unlocked in the current session! Keep unlocked until screen lock/turn off occurs.
+        if (unlockTime != null) {
+            // Check if timeout has expired (only if timeoutMs > 0)
+            if (timeoutMs > 0L && (System.currentTimeMillis() - unlockTime > timeoutMs)) {
+                synchronized(unlockedPackages) {
+                    unlockedPackages.remove(packageName)
+                }
+                return true
+            }
+            // Unlocked in the current session and within timeout!
             return false
         }
 

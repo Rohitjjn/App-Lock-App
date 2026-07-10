@@ -291,12 +291,14 @@ class MainActivity : FragmentActivity() {
         val isFirst = remember { viewModel.isFirstLaunch() }
 
         var isUsageStatsActive by remember { mutableStateOf(false) }
+        var isOverlayActive by remember { mutableStateOf(false) }
         var isCameraPermActive by remember { mutableStateOf(false) }
         var isNotificationPermActive by remember { mutableStateOf(false) }
         var showOemInstructionsDialog by remember { mutableStateOf(false) }
 
         val checkPermissions = {
             isUsageStatsActive = hasUsageStatsPermission(context)
+            isOverlayActive = Settings.canDrawOverlays(context)
             isCameraPermActive = ContextCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.CAMERA
@@ -446,6 +448,32 @@ class MainActivity : FragmentActivity() {
                     }
 
                     item {
+                        StatusIndicatorCard(
+                            title = "Display Over Other Apps",
+                            description = "Required to securely display the lock screen over restricted background transitions.",
+                            isActive = isOverlayActive,
+                            activeLabel = "OVERLAY PERMITTED",
+                            inactiveLabel = "BLOCKED",
+                            testTag = "overlay_status_card"
+                        )
+                        if (!isOverlayActive) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            ActionLaunchCard(
+                                title = "Enable Display Over Other Apps",
+                                icon = Icons.Default.OpenInNew,
+                                onClick = {
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        android.net.Uri.parse("package:" + context.packageName)
+                                    )
+                                    context.startActivity(intent)
+                                },
+                                tag = "overlay_btn"
+                            )
+                        }
+                    }
+
+                    item {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         Text(
                             text = "INTEGRATED PROTECTION PERMISSIONS",
@@ -522,6 +550,10 @@ class MainActivity : FragmentActivity() {
                     onClick = {
                         if (!isUsageStatsActive) {
                             Toast.makeText(context, "Usage Stats Monitoring is mandatory to activate locking!", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
+                        if (!isOverlayActive) {
+                            Toast.makeText(context, "Display Over Other Apps is mandatory to show the lock screen!", Toast.LENGTH_LONG).show()
                             return@Button
                         }
                         if (isFirst) {

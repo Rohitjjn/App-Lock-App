@@ -91,12 +91,14 @@ fun SettingsScreen(
 
     // Diagnostic/Permission States cached top-level to prevent Jitters & Main-thread work during scrolling
     var isUsageStatsActive by remember { mutableStateOf(false) }
+    var isOverlayActive by remember { mutableStateOf(false) }
     var isCameraActive by remember { mutableStateOf(false) }
     var isNotificationActive by remember { mutableStateOf(false) }
 
     val refreshPermissions = remember(context) {
         {
             isUsageStatsActive = hasUsageStatsPermission(context)
+            isOverlayActive = android.provider.Settings.canDrawOverlays(context)
             isCameraActive = ContextCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.CAMERA
@@ -307,6 +309,16 @@ fun SettingsScreen(
     val onUsageStatsClick = remember(context) {
         {
             val intent = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            context.startActivity(intent)
+        }
+    }
+
+    val onOverlayClick = remember(context) {
+        {
+            val intent = Intent(
+                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:" + context.packageName)
+            )
             context.startActivity(intent)
         }
     }
@@ -590,6 +602,17 @@ fun SettingsScreen(
                         isChecked = isUsageStatsActive,
                         onClick = onUsageStatsClick,
                         testTag = "settings_usagestats_toggle"
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 8.dp))
+
+                    // Overlay Status Button
+                    PermissionStatusRow(
+                        title = "Display Over Other Apps",
+                        description = "Required to securely display the lock screen over restricted background transitions.",
+                        isChecked = isOverlayActive,
+                        onClick = onOverlayClick,
+                        testTag = "settings_overlay_toggle"
                     )
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 8.dp))

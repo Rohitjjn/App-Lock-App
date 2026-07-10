@@ -325,6 +325,19 @@ class LockActivity : FragmentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        LockSessionManager.clearLaunchPending(lockedPackageName)
+        LockSessionManager.currentlyDisplayingLockFor = lockedPackageName
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (LockSessionManager.currentlyDisplayingLockFor == lockedPackageName) {
+            LockSessionManager.currentlyDisplayingLockFor = null
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         if (LockSessionManager.currentlyDisplayingLockFor == lockedPackageName) {

@@ -369,11 +369,13 @@ fun OnboardingPermissionsScreenContent(
     val scrollState = rememberScrollState()
 
     var isUsageStatsActive by remember { mutableStateOf(false) }
+    var isOverlayActive by remember { mutableStateOf(false) }
     var isCameraActive by remember { mutableStateOf(false) }
     var isNotificationActive by remember { mutableStateOf(false) }
 
     val updateChecks = {
         isUsageStatsActive = hasUsageStatsPermission(context)
+        isOverlayActive = Settings.canDrawOverlays(context)
         isCameraActive = ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.CAMERA
@@ -427,8 +429,8 @@ fun OnboardingPermissionsScreenContent(
         }
     }
 
-    // Determine if mandatory is active (either Notification on older SDK is fine, UsageStats is mandatory everywhere)
-    val mandatoryPermissionsActive = isUsageStatsActive && isNotificationActive
+    // Determine if mandatory is active (either Notification on older SDK is fine, UsageStats & Overlay are mandatory everywhere)
+    val mandatoryPermissionsActive = isUsageStatsActive && isOverlayActive && isNotificationActive
 
     Box(
         modifier = Modifier
@@ -495,6 +497,24 @@ fun OnboardingPermissionsScreenContent(
                     val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                     context.startActivity(intent)
                     Toast.makeText(context, "Enable Usage Access for 'SafeLock'", Toast.LENGTH_LONG).show()
+                },
+                accentColor = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            PermissionCard(
+                title = "Display Over Other Apps",
+                description = "Required to securely display the lock screen over restricted background transitions.",
+                icon = Icons.Default.OpenInNew,
+                isActive = isOverlayActive,
+                onClick = {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:" + context.packageName)
+                    )
+                    context.startActivity(intent)
+                    Toast.makeText(context, "Enable Display Over Other Apps for 'SafeLock'", Toast.LENGTH_LONG).show()
                 },
                 accentColor = MaterialTheme.colorScheme.primary
             )
