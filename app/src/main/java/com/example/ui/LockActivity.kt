@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.service.quicksettings.TileService
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -58,6 +59,8 @@ class LockActivity : FragmentActivity() {
     }
 
     private var lockedPackageName: String = ""
+    private var actionKeyword: String? = null
+    private var isTileToggleAction: Boolean = false
     private lateinit var encryptedPrefs: EncryptedPrefs
     private val biometricHelper by lazy { BiometricHelper() }
     private val executor = Executors.newSingleThreadExecutor()
@@ -66,11 +69,11 @@ class LockActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // FLAG_SECURE to prevent screenshots and screen leaks in recent apps previews
-        window.setFlags(
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-            android.view.WindowManager.LayoutParams.FLAG_SECURE
-        )
+        // FLAG_SECURE removed to allow screenshots during development and testing as requested by user
+        // window.setFlags(
+        //     android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        //     android.view.WindowManager.LayoutParams.FLAG_SECURE
+        // )
 
         // 1. Prevent split-screen / multi-window bypass lock bypass vectors
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -96,21 +99,27 @@ class LockActivity : FragmentActivity() {
             Log.e(TAG, "Safe clipboard clearing operation error", e)
         }
 
+        val app = application as AppLockApplication
+        encryptedPrefs = app.encryptedPrefs
+
+        isTileToggleAction = intent.getBooleanExtra("EXTRA_TILE_TOGGLE_ACTION", false)
         lockedPackageName = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: ""
-        if (lockedPackageName.isEmpty()) {
+        actionKeyword = intent.getStringExtra("ACTION_KEYWORD")
+
+        if (isTileToggleAction) {
+            lockedPackageName = "com.example.tile_toggle"
+        } else if (lockedPackageName.isEmpty()) {
             finish()
             return
         }
 
         LockSessionManager.currentlyDisplayingLockFor = lockedPackageName
 
-        val app = application as AppLockApplication
-        encryptedPrefs = app.encryptedPrefs
-
         // 3. Jetpack Compose error layout safe fallback rendering catch blocks
         try {
             setContent {
                 val themeMode = remember { encryptedPrefs.getThemeMode() }
+                val accentColorHex = remember { encryptedPrefs.getAccentColorHex() }
                 val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
                 val useDarkTheme = remember(themeMode, isSystemDark) {
                     when (themeMode) {
@@ -119,7 +128,7 @@ class LockActivity : FragmentActivity() {
                         else -> isSystemDark
                     }
                 }
-                MyApplicationTheme(darkTheme = useDarkTheme) {
+                MyApplicationTheme(darkTheme = useDarkTheme, accentColorHex = accentColorHex) {
                     LockScreenContent()
                 }
             }
@@ -137,7 +146,11 @@ class LockActivity : FragmentActivity() {
         handleUnlockCancel()
     }
 
+    private var isBiometricPromptShowing = false
+
     private fun triggerBiometricAuth(onSuccess: () -> Unit) {
+        if (isBiometricPromptShowing) return
+        isBiometricPromptShowing = true
         biometricHelper.authenticate(
             activity = this,
             executor = executor,
@@ -145,38 +158,82 @@ class LockActivity : FragmentActivity() {
             subtitle = "Verify to unlock application",
             onSuccess = {
                 runOnUiThread {
+                    isBiometricPromptShowing = false
                     onSuccess()
                 }
             },
             onError = { errorCode, errString ->
                 runOnUiThread {
+                    isBiometricPromptShowing = false
                     // Ignore user canceled, canceled by system/back, and negative (cancel) button click codes
                     if (errorCode != 5 && errorCode != 10 && errorCode != 13) {
-                        Toast.makeText(this, "Biometrics: $errString", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@LockActivity, "Biometrics: $errString", Toast.LENGTH_SHORT).show()
                     }
                 }
             },
             onFailed = {
                 runOnUiThread {
-                    Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
+                    isBiometricPromptShowing = false
+                    Toast.makeText(this@LockActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
                 }
             }
         )
     }
 
     private fun handleUnlockSuccess() {
+        if (isTileToggleAction) {
+            val currentShieldState = encryptedPrefs.isShieldEnabled()
+            val newShieldState = !currentShieldState
+            encryptedPrefs.setShieldEnabled(newShieldState)
+            
+            val message = if (newShieldState) {
+                "App Shield Switched ON"
+            } else {
+                "App Shield Switched OFF"
+            }
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    TileService.requestListeningState(this, android.content.ComponentName(this, com.example.service.SafeLockTileService::class.java))
+                    com.example.service.SafeLockTileService.updateActiveTile()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to request tile update", e)
+            }
+            
+            finish()
+            overridePendingTransition(0, 0)
+            return
+        }
         LockSessionManager.setAppUnlocked(lockedPackageName)
         finish()
         overridePendingTransition(0, 0)
     }
 
-    private fun handleUnlockCancel() {
-        // Safe redirect to main home screen to prevent unauthorized access
-        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_HOME)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    private fun handleUnlockCancel(byBackPress: Boolean = false) {
+        if (isTileToggleAction) {
+            finish()
+            return
         }
-        startActivity(homeIntent)
+        
+        // Agar user bina pattern ya PIN dale cancel krta h (back/home press se), 
+        // toh hum direct user ko safe Home Screen par bhej denge aur locked app ko terminate kr denge, 
+        // taaki koi security leak ya activity flicker na ho.
+        try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(homeIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start home intent", e)
+        }
+
+        if (byBackPress) {
+            // Set flag so AccessibilityService performs safe auto-back bypass on the target app
+            LockSessionManager.cancelActionPendingFor = lockedPackageName
+        }
         
         // Kill background process of target locked app because they did not unlock it!
         try {
@@ -188,11 +245,12 @@ class LockActivity : FragmentActivity() {
         }
         
         finish()
+        overridePendingTransition(0, 0)
     }
 
     override fun onBackPressed() {
-        // Instead of letting them back into the app, redirect to home
-        handleUnlockCancel()
+        // Instead of letting them back into the app, redirect to home/perform back closure
+        handleUnlockCancel(byBackPress = true)
     }
 
     private fun triggerVibration() {
@@ -233,11 +291,15 @@ class LockActivity : FragmentActivity() {
             onUnlockSuccess = { handleUnlockSuccess() },
             onIncorrectAttempt = { triggerVibration() },
             onTriggerBiometric = { onSuccessCallback -> triggerBiometricAuth(onSuccessCallback) },
-            onCancel = { handleUnlockCancel() }
+            onCancel = { handleUnlockCancel(byBackPress = true) },
+            actionKeyword = actionKeyword
         )
     }
 
     private fun getAppName(context: Context, packageName: String): String {
+        if (isTileToggleAction) {
+            return "App Shield"
+        }
         return try {
             val pm = context.packageManager
             val appInfo = pm.getApplicationInfo(packageName, 0)
@@ -248,6 +310,13 @@ class LockActivity : FragmentActivity() {
     }
 
     private fun getAppIcon(context: Context, packageName: String): Drawable? {
+        if (isTileToggleAction) {
+            return try {
+                context.packageManager.getApplicationIcon(context.packageName)
+            } catch (e: Exception) {
+                null
+            }
+        }
         return try {
             val pm = context.packageManager
             pm.getApplicationIcon(packageName)

@@ -79,15 +79,15 @@ fun SplashScreenContent(
         }
     }
 
-    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val isDark = MaterialTheme.colorScheme.background == com.example.ui.theme.XaiCanvas
     val gradientColors = if (isDark) {
-        listOf(Color(0xFF040406), Color(0xFF101015), Color(0xFF060608))
+        listOf(Color(0xFF0A0A0A), Color(0xFF191919), Color(0xFF0A0A0A))
     } else {
-        listOf(Color(0xFFFAFAFA), Color(0xFFF2F4F7), Color(0xFFFFFFFF))
+        listOf(Color(0xFFF9F9FB), Color(0xFFEDEDF0), Color(0xFFF9F9FB))
     }
-    val cardBgColor = if (isDark) Color(0xFF101016) else Color(0xFFFFFFFF)
-    val titleColor = if (isDark) Color.White else Color(0xFF191924)
-    val descColor = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF191924).copy(alpha = 0.6f)
+    val cardBgColor = if (isDark) Color(0xFF191919) else Color(0xFFFFFFFF)
+    val titleColor = if (isDark) Color.White else Color(0xFF0A0A0A)
+    val descColor = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF0A0A0A).copy(alpha = 0.6f)
 
     Box(
         modifier = Modifier
@@ -190,7 +190,7 @@ fun IntroScreensContent(
             title = "Intruder Alert Log",
             description = "Never wonder who is spying. SafeLock silently snaps visual camera logs of trespassers on wrong locks automatically.",
             icon = Icons.Default.CameraAlt,
-            colorAccent = Color(0xFFFF6B6B)
+            colorAccent = com.example.ui.theme.LocalAccentColor.current
         ),
         IntroPageData(
             title = "Dynamic Sequences",
@@ -339,7 +339,7 @@ fun IntroScreensContent(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = Color.White
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     modifier = Modifier.height(48.dp)
                 ) {
@@ -369,13 +369,11 @@ fun OnboardingPermissionsScreenContent(
     val scrollState = rememberScrollState()
 
     var isAccessibilityActive by remember { mutableStateOf(false) }
-    var isBatteryIgnoringActive by remember { mutableStateOf(false) }
     var isCameraActive by remember { mutableStateOf(false) }
     var isNotificationActive by remember { mutableStateOf(false) }
 
     val updateChecks = {
         isAccessibilityActive = isAccessibilityEnabledLocally(context)
-        isBatteryIgnoringActive = RealmeOemHelper.isBatteryIgnoringOptimization(context)
         isCameraActive = ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.CAMERA
@@ -395,11 +393,25 @@ fun OnboardingPermissionsScreenContent(
         updateChecks()
     }
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                updateChecks()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // Contracts
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         isCameraActive = isGranted
+        updateChecks()
         if (isGranted) {
             Toast.makeText(context, "Camera permission active", Toast.LENGTH_SHORT).show()
         }
@@ -409,6 +421,7 @@ fun OnboardingPermissionsScreenContent(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         isNotificationActive = isGranted
+        updateChecks()
         if (isGranted) {
             Toast.makeText(context, "Notification permission active", Toast.LENGTH_SHORT).show()
         }
@@ -496,7 +509,20 @@ fun OnboardingPermissionsScreenContent(
                     icon = Icons.Default.NotificationsActive,
                     isActive = isNotificationActive,
                     onClick = {
-                        notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        try {
+                            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        } catch (e: Exception) {
+                            try {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = android.net.Uri.parse("package:" + context.packageName)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                                Toast.makeText(context, "Please grant notifications in settings manually.", Toast.LENGTH_LONG).show()
+                            } catch (ex: Exception) {
+                                Toast.makeText(context, "Error launching settings.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     },
                     accentColor = MaterialTheme.colorScheme.primary
                 )
@@ -524,28 +550,22 @@ fun OnboardingPermissionsScreenContent(
                 icon = Icons.Default.CameraAlt,
                 isActive = isCameraActive,
                 onClick = {
-                    cameraLauncher.launch(android.Manifest.permission.CAMERA)
-                },
-                accentColor = Color(0xFFFF6B6B)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 4. Battery Card (Optional)
-            PermissionCard(
-                title = "Battery Optimization Bypass",
-                description = "Keeps Android from aggressively killing your persistent protection shield services.",
-                icon = Icons.Default.BatteryChargingFull,
-                isActive = isBatteryIgnoringActive,
-                onClick = {
                     try {
-                        val intent = RealmeOemHelper.getBatteryOptimizationIntent(context)
-                        context.startActivity(intent)
+                        cameraLauncher.launch(android.Manifest.permission.CAMERA)
                     } catch (e: Exception) {
-                        context.startActivity(Intent(Settings.ACTION_SETTINGS))
+                        try {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = android.net.Uri.parse("package:" + context.packageName)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                            Toast.makeText(context, "Please grant camera in settings manually.", Toast.LENGTH_LONG).show()
+                        } catch (ex: Exception) {
+                            Toast.makeText(context, "Error launching settings.", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 },
-                accentColor = MaterialTheme.colorScheme.tertiary
+                accentColor = com.example.ui.theme.LocalAccentColor.current
             )
         }
 
@@ -599,7 +619,7 @@ fun OnboardingPermissionsScreenContent(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = Color.White
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     modifier = Modifier.fillMaxWidth().height(48.dp).testTag("onboarding_continue")
                 ) {
@@ -636,15 +656,15 @@ fun PermissionCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(8.dp))
             .border(
                 1.dp,
-                if (isActive) accentColor.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                RoundedCornerShape(20.dp)
+                if (isActive) accentColor.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outline,
+                RoundedCornerShape(8.dp)
             )
             .clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isActive) accentColor.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
+            containerColor = if (isActive) accentColor.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
@@ -660,10 +680,10 @@ fun PermissionCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = if (isActive) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
+                     imageVector = icon,
+                     contentDescription = null,
+                     tint = if (isActive) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                     modifier = Modifier.size(24.dp)
                 )
             }
 

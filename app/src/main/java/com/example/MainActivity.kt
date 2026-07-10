@@ -74,6 +74,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             // Read theme preferences reactively and map to Theme configuration
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val accentColorHex by viewModel.accentColorHex.collectAsStateWithLifecycle()
             val isSystemDark = isSystemInDarkTheme()
             val useDarkTheme = when (themeMode) {
                 "LIGHT" -> false
@@ -81,7 +82,7 @@ class MainActivity : FragmentActivity() {
                 else -> isSystemDark
             }
 
-            MyApplicationTheme(darkTheme = useDarkTheme) {
+            MyApplicationTheme(darkTheme = useDarkTheme, accentColorHex = accentColorHex) {
                 MainLayout(viewModel)
             }
         }
@@ -280,15 +281,12 @@ class MainActivity : FragmentActivity() {
         val isFirst = remember { viewModel.isFirstLaunch() }
 
         var isAccessibilityActive by remember { mutableStateOf(false) }
-        var isBatteryIgnoringOpt by remember { mutableStateOf(false) }
         var isCameraPermActive by remember { mutableStateOf(false) }
         var isNotificationPermActive by remember { mutableStateOf(false) }
         var showOemInstructionsDialog by remember { mutableStateOf(false) }
-        var batterySkipped by remember { mutableStateOf(false) }
 
         val checkPermissions = {
             isAccessibilityActive = isAccessibilityServiceEnabled(context, AppLockAccessibilityService::class.java)
-            isBatteryIgnoringOpt = RealmeOemHelper.isBatteryIgnoringOptimization(context)
             isCameraPermActive = ContextCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.CAMERA
@@ -489,91 +487,7 @@ class MainActivity : FragmentActivity() {
                                 )
                             }
                         }
-                    }
-
-                    item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        Text(
-                            text = "STABILIZATION SETUP (CAN BE SKIPPED)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    // 4. Battery Optimization Status Card
-                    item {
-                        StatusIndicatorCard(
-                            title = "Battery Saving Exemption",
-                            description = "Prevents aggressive systems from terminating background locker monitors.",
-                            isActive = isBatteryIgnoringOpt || batterySkipped,
-                            activeLabel = if (isBatteryIgnoringOpt) "SAVER IGNORED (UNRESTRICTED)" else "SKIPPED / WAIVED STATUS",
-                            inactiveLabel = "RESTRICTED (Kill Risk)",
-                            testTag = "battery_optimization_card"
-                        )
-                        if (!isBatteryIgnoringOpt && !batterySkipped) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Box(modifier = Modifier.weight(1f)) {
-                                    ActionLaunchCard(
-                                        title = "Disable Optimization",
-                                        icon = Icons.Default.PowerSettingsNew,
-                                        onClick = {
-                                            try {
-                                                val intent = RealmeOemHelper.getBatteryOptimizationIntent(context)
-                                                context.startActivity(intent)
-                                            } catch (e: Exception) {
-                                                Toast.makeText(context, "Opening Settings", Toast.LENGTH_SHORT).show()
-                                                context.startActivity(Intent(Settings.ACTION_SETTINGS))
-                                            }
-                                        },
-                                        tag = "battery_btn"
-                                    )
-                                }
-                                Box(modifier = Modifier.weight(1f)) {
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable {
-                                                batterySkipped = true
-                                                Toast.makeText(context, "Battery optimization ignored / skipped successfully!", Toast.LENGTH_SHORT).show()
-                                            }
-                                            .testTag("skip_battery_opt_btn"),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f)
-                                        ),
-                                        shape = RoundedCornerShape(10.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .padding(12.dp)
-                                                .fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.SkipNext,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.secondary,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(
-                                                text = "Skip Optimization",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.secondary
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // OEM instructions Card
+                    }                    // OEM instructions Card
                     item {
                         Button(
                             onClick = { showOemInstructionsDialog = true },

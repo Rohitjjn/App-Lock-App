@@ -37,9 +37,9 @@ fun PatternView(
     onIncorrectAttempt: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background == Color(0xFF1A1A1A)
-    val textColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF1A1A1A)
-    val accentColor = Color(0xFFFF6B6B)
+    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background == com.example.ui.theme.XaiCanvas
+    val textColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0A0A0A)
+    val accentColor = com.example.ui.theme.LocalAccentColor.current
     var isWrong by remember { mutableStateOf(false) }
     var currentMsg by remember { mutableStateOf("Draw pattern to unlock") }
     val coroutineScope = rememberCoroutineScope()
@@ -112,13 +112,26 @@ fun PatternCanvas(
     var selectedDots by remember { mutableStateOf<List<Int>>(emptyList()) }
     var currentTouchPoint by remember { mutableStateOf<Offset?>(null) }
     var autoClearJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    
-    val dotRadius = 14.dp
-    val hitRadius = 38.dp
 
-    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background == Color(0xFF1A1A1A)
-    val accentColor = Color(0xFFFF6B6B)
-    val textColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF1A1A1A)
+    val app = context.applicationContext as com.example.AppLockApplication
+    val encryptedPrefs = app.encryptedPrefs
+
+    val patternDotsColorHex = remember { encryptedPrefs.getLockPatternDotsColor() }
+    val patternDotsSize = remember { encryptedPrefs.getLockPatternDotsSize() }
+    val patternDotsShape = remember { encryptedPrefs.getLockPatternDotsShape() }
+    val patternLineColorHex = remember { encryptedPrefs.getLockAllLocksColor() } // matching lock shape color or line color
+    val realLineColorHex = remember { encryptedPrefs.getLockPatternLineColor() }
+    val patternAnimation = remember { encryptedPrefs.getLockPatternAnimation() }
+    
+    val isDark = isSystemInDarkTheme()
+    val accentColor = com.example.ui.theme.LocalAccentColor.current
+    val textColor = if (isDark) Color.White else Color.Black
+
+    val dotOutlineColor = textColor.copy(alpha = 0.65f)
+    val traceLineColor = accentColor
+
+    val dotRadius = patternDotsSize.dp
+    val hitRadius = 38.dp
 
     fun playDotConnectVibration() {
         if (isVibrationEnabled) {
@@ -146,15 +159,17 @@ fun PatternCanvas(
         val width = constraints.maxWidth.toFloat()
         val height = constraints.maxHeight.toFloat()
         val sideLength = minOf(width, height)
+        val offsetX = (width - sideLength) / 2f
+        val offsetY = (height - sideLength) / 2f
         val padding = sideLength / 6
         val step = (sideLength - 2 * padding) / 2
 
-        val dotCenters = remember(sideLength) {
+        val dotCenters = remember(sideLength, offsetX, offsetY) {
             val centers = mutableListOf<Offset>()
             for (row in 0..2) {
                 for (col in 0..2) {
-                    val x = padding + col * step
-                    val y = padding + row * step
+                    val x = offsetX + padding + col * step
+                    val y = offsetY + padding + row * step
                     centers.add(Offset(x, y))
                 }
             }
@@ -191,10 +206,13 @@ fun PatternCanvas(
                                 (center - point).getDistance() < hitRadius.toPx()
                             }
                             if (index != -1 && index !in selectedDots) {
+                                val newlyConnected = mutableListOf<Int>()
                                 addPassedDotsInLine(selectedDots, index)?.let { crossedDots ->
                                     selectedDots = selectedDots + crossedDots
+                                    newlyConnected.addAll(crossedDots)
                                 } ?: run {
                                     selectedDots = selectedDots + index
+                                    newlyConnected.add(index)
                                 }
                                 playDotConnectVibration()
                             }
@@ -218,7 +236,7 @@ fun PatternCanvas(
                     )
                 }
         ) {
-            val lineColor = accentColor
+            val lineColor = if (isWrong) Color.Red else traceLineColor
 
             if (selectedDots.isNotEmpty()) {
                 val connectorPath = Path().apply {
@@ -257,37 +275,85 @@ fun PatternCanvas(
             dotCenters.forEachIndexed { index, center ->
                 val isSelected = index in selectedDots
                 val dotColor = when {
-                    isSelected -> accentColor
-                    else -> textColor.copy(alpha = 0.65f)
+                    isSelected -> if (isWrong) Color.Red else traceLineColor
+                    else -> dotOutlineColor
                 }
 
                 if (isSelected) {
-                    drawCircle(
-                        color = accentColor.copy(alpha = 0.15f),
-                        radius = dotRadius.toPx() * 2.2f,
-                        center = center
-                    )
-                    drawCircle(
-                        color = accentColor.copy(alpha = 0.3f),
-                        radius = dotRadius.toPx() * 1.5f,
-                        center = center
-                    )
-                    drawCircle(
-                        color = dotColor,
-                        radius = dotRadius.toPx() * 0.7f,
-                        center = center
-                    )
+                    if (patternDotsShape == "Square") {
+                        drawRect(
+                            color = lineColor.copy(alpha = 0.15f),
+                            topLeft = Offset(center.x - dotRadius.toPx() * 2.2f, center.y - dotRadius.toPx() * 2.2f),
+                            size = androidx.compose.ui.geometry.Size(dotRadius.toPx() * 4.4f, dotRadius.toPx() * 4.4f)
+                        )
+                        drawRect(
+                            color = lineColor.copy(alpha = 0.3f),
+                            topLeft = Offset(center.x - dotRadius.toPx() * 1.5f, center.y - dotRadius.toPx() * 1.5f),
+                            size = androidx.compose.ui.geometry.Size(dotRadius.toPx() * 3f, dotRadius.toPx() * 3f)
+                        )
+                        drawRect(
+                            color = dotColor,
+                            topLeft = Offset(center.x - dotRadius.toPx() * 0.7f, center.y - dotRadius.toPx() * 0.7f),
+                            size = androidx.compose.ui.geometry.Size(dotRadius.toPx() * 1.4f, dotRadius.toPx() * 1.4f)
+                        )
+                    } else if (patternDotsShape == "Star") {
+                        val path = Path().apply {
+                            moveTo(center.x, center.y - dotRadius.toPx() * 2.2f)
+                            lineTo(center.x + dotRadius.toPx() * 2.2f, center.y)
+                            lineTo(center.x, center.y + dotRadius.toPx() * 2.2f)
+                            lineTo(center.x - dotRadius.toPx() * 2.2f, center.y)
+                            close()
+                        }
+                        drawPath(path = path, color = lineColor.copy(alpha = 0.3f))
+                        
+                        val innerPath = Path().apply {
+                            moveTo(center.x, center.y - dotRadius.toPx() * 0.9f)
+                            lineTo(center.x + dotRadius.toPx() * 0.9f, center.y)
+                            lineTo(center.x, center.y + dotRadius.toPx() * 0.9f)
+                            lineTo(center.x - dotRadius.toPx() * 0.9f, center.y)
+                            close()
+                        }
+                        drawPath(path = innerPath, color = dotColor)
+                    } else {
+                        drawCircle(
+                            color = lineColor.copy(alpha = 0.15f),
+                            radius = dotRadius.toPx() * 2.2f,
+                            center = center
+                        )
+                        drawCircle(
+                            color = lineColor.copy(alpha = 0.3f),
+                            radius = dotRadius.toPx() * 1.5f,
+                            center = center
+                        )
+                        drawCircle(
+                            color = dotColor,
+                            radius = dotRadius.toPx() * 0.7f,
+                            center = center
+                        )
+                    }
                 } else {
-                    drawCircle(
-                        color = textColor.copy(alpha = 0.08f),
-                        radius = dotRadius.toPx() * 1.5f,
-                        center = center
-                    )
-                    drawCircle(
-                        color = textColor.copy(alpha = 0.25f),
-                        radius = 4.dp.toPx(),
-                        center = center
-                    )
+                    if (patternDotsShape == "Square") {
+                        drawRect(
+                            color = dotOutlineColor,
+                            topLeft = Offset(center.x - dotRadius.toPx() * 0.5f, center.y - dotRadius.toPx() * 0.5f),
+                            size = androidx.compose.ui.geometry.Size(dotRadius.toPx(), dotRadius.toPx())
+                        )
+                    } else if (patternDotsShape == "Star") {
+                        val path = Path().apply {
+                            moveTo(center.x, center.y - dotRadius.toPx() * 0.8f)
+                            lineTo(center.x + dotRadius.toPx() * 0.8f, center.y)
+                            lineTo(center.x, center.y + dotRadius.toPx() * 0.8f)
+                            lineTo(center.x - dotRadius.toPx() * 0.8f, center.y)
+                            close()
+                        }
+                        drawPath(path = path, color = dotOutlineColor)
+                    } else {
+                        drawCircle(
+                            color = dotOutlineColor,
+                            radius = dotRadius.toPx() * 0.5f,
+                            center = center
+                        )
+                    }
                 }
             }
         }

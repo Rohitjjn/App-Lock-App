@@ -87,9 +87,18 @@ fun PasswordEntryPad(
         }
     }
 
-    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background == Color(0xFF1A1A1A)
-    val accentColor = Color(0xFFFF6B6B)
-    val textColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF1A1A1A)
+    val app = context.applicationContext as com.example.AppLockApplication
+    val encryptedPrefs = app.encryptedPrefs
+
+    val isDark = isSystemInDarkTheme()
+    val accentColor = com.example.ui.theme.LocalAccentColor.current
+    val textColor = if (isDark) Color.White else Color.Black
+
+    val passwordIconColor = accentColor
+    val passwordTextColor = accentColor
+    val passwordBorderColor = accentColor
+    val passwordEyeColor = accentColor
+    val passwordUnlockButtonColor = accentColor
 
     fun handleUnlockVerify() {
         playClickVibration()
@@ -125,7 +134,7 @@ fun PasswordEntryPad(
         Icon(
             imageVector = Icons.Default.LockOpen,
             contentDescription = null,
-            tint = accentColor,
+            tint = passwordIconColor,
             modifier = Modifier.size(48.dp)
         )
         
@@ -135,7 +144,7 @@ fun PasswordEntryPad(
             text = "Enter Password",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = textColor
+            color = passwordTextColor
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -161,17 +170,25 @@ fun PasswordEntryPad(
             ),
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
+            isError = isWrong,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = accentColor,
-                focusedLabelColor = accentColor,
-                unfocusedBorderColor = textColor.copy(alpha = 0.2f),
-                cursorColor = accentColor
+                focusedBorderColor = passwordBorderColor,
+                focusedLabelColor = passwordBorderColor,
+                unfocusedBorderColor = passwordBorderColor.copy(alpha = 0.5f),
+                cursorColor = passwordBorderColor,
+                errorBorderColor = passwordBorderColor,
+                errorLabelColor = passwordBorderColor,
+                errorCursorColor = passwordBorderColor,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                errorContainerColor = Color.Transparent
             ),
             trailingIcon = {
                 IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     Icon(
                         imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (isPasswordVisible) "Hide password" else "Show password"
+                        contentDescription = if (isPasswordVisible) "Hide password" else "Show password",
+                        tint = passwordEyeColor
                     )
                 }
             }
@@ -181,7 +198,7 @@ fun PasswordEntryPad(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = errorMessage,
-                color = accentColor,
+                color = passwordIconColor,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -195,10 +212,10 @@ fun PasswordEntryPad(
                 .fillMaxWidth()
                 .height(54.dp)
                 .testTag("password_unlock_submit_btn"),
-            shape = RoundedCornerShape(16.dp),
+            shape = androidx.compose.foundation.shape.CircleShape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = accentColor,
-                contentColor = Color.White
+                containerColor = passwordUnlockButtonColor,
+                contentColor = if (isDark) Color.Black else Color.White
             )
         ) {
             Text(

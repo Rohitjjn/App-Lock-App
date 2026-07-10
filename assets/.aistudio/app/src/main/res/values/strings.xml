@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">App Lock</string>
+    <string name="accessibility_description">Monitors offline app launches to display secure lock screens and protect user apps on this device.</string>
+    <string name="admin_receiver_description">Prevents unauthorized users from uninstalling or deleting SafeLock app lock protection from your device.</string>
+</resources>

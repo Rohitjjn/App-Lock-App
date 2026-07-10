@@ -72,10 +72,12 @@ fun AppListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "App Lock",
-                        fontFamily = PacificoFontFamily,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Normal,
+                        text = "SAFE_LOCK",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp
+                        ),
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.testTag("app_list_title")
                     )
@@ -101,11 +103,11 @@ fun AppListScreen(
                         DropdownMenu(
                             expanded = showDropdown,
                             onDismissRequest = { showDropdown = false },
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(MaterialTheme.colorScheme.surface)
-                                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)), RoundedCornerShape(14.dp))
+                                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(8.dp))
                         ) {
                             val isAlphaSelected = viewModel.sortOption.value == SortOption.ALPHABETICAL
                             DropdownMenuItem(
@@ -215,11 +217,15 @@ fun AppListScreen(
                         }
                     }
                 },
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(8.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             )
 
@@ -392,9 +398,10 @@ fun AppRowItem(
     }
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         modifier = modifier
             .fillMaxWidth()
@@ -488,9 +495,10 @@ fun ShimmerAppRow() {
     )
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         modifier = Modifier
             .fillMaxWidth()
@@ -586,5 +594,3 @@ object AppIconCache {
         }
     }
 }
-
-

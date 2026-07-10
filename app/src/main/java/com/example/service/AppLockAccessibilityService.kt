@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.content.ContextCompat
 import com.example.AppLockApplication
 import com.example.data.repository.AppLockRepository
@@ -64,19 +65,49 @@ class AppLockAccessibilityService : AccessibilityService() {
         val info = AccessibilityServiceInfo().apply {
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
-                    AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+            flags = 0 // Removed FLAG_INCLUDE_NOT_IMPORTANT_VIEWS and FLAG_REPORT_VIEW_IDS to bypass banking app restrictions
             notificationTimeout = 80
         }
         this.serviceInfo = info
     }
 
+    private val bankingApps = setOf(
+        "com.google.android.apps.nbu.paisa.user", // Google Pay
+        "phonepe.app", // PhonePe
+        "net.one97.paytm", // Paytm
+        "com.sbi.SBIFreedomPlus", // YONO SBI
+        "com.sbi.YONOSBI",
+        "com.hdfcbank.smarthub",
+        "com.icicibank.pockets",
+        "com.csam.icici.bank.imobile"
+    )
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val packageName = event.packageName?.toString() ?: return
 
+            if (bankingApps.contains(packageName)) {
+                return
+            }
+
             // Feed package name to the session manager to track foreground transitions and auto-lock on minimize/exit
-            LockSessionManager.updateForegroundPackage(packageName, applicationContext)
+            if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                LockSessionManager.updateForegroundPackage(packageName, applicationContext)
+            }
+
+            // Intercept if the user cancelled the validation of current app, so we force-back out of it
+            val cancelPendingPkg = LockSessionManager.cancelActionPendingFor
+            if (cancelPendingPkg != null) {
+                if (packageName == cancelPendingPkg) {
+                    LockSessionManager.cancelActionPendingFor = null
+                    Log.d("AppLockService", "Performing auto-back on unauthorized app: $packageName")
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    return
+                } else if (packageName != this.packageName && !packageName.startsWith(this.packageName)) {
+                    // Stale cancel pending, clear it
+                    LockSessionManager.cancelActionPendingFor = null
+                }
+            }
 
             // Never lock own app or home launcher
             if (packageName == this.packageName || packageName.startsWith(this.packageName) ||
@@ -86,8 +117,9 @@ class AppLockAccessibilityService : AccessibilityService() {
             }
             
             // Instantly check locked status synchronously on the Main Thread to avoid async locks buildup
-            if (LockSessionManager.isPackageInLockedCache(packageName)) {
-                val encryptedPrefs = (application as AppLockApplication).encryptedPrefs
+            val encryptedPrefs = (application as AppLockApplication).encryptedPrefs
+
+            if (encryptedPrefs.isShieldEnabled() && LockSessionManager.isPackageInLockedCache(packageName)) {
                 val timeoutMs = encryptedPrefs.getLockTimeoutMs()
 
                 if (LockSessionManager.isAppLocked(packageName, timeoutMs)) {

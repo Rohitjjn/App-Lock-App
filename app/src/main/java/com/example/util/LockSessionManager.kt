@@ -14,6 +14,10 @@ object LockSessionManager {
     @Volatile
     var currentlyDisplayingLockFor: String? = null
 
+    // Tracks if the user canceled validation for a package to trigger a safe back intercept
+    @Volatile
+    var cancelActionPendingFor: String? = null
+
     // Tracks currently pending lock launches to prevent race conditions during overlaps
     private val pendingLaunches = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
@@ -26,6 +30,13 @@ object LockSessionManager {
     fun updateLockedPackagesCache(packageNames: Set<String>) {
         lockedPackagesCache.clear()
         lockedPackagesCache.addAll(packageNames)
+    }
+
+    /**
+     * Retrieves the current internal cache of locked package names
+     */
+    fun getLockedPackageNamesFromCache(context: android.content.Context): Set<String> {
+        return lockedPackagesCache
     }
 
     /**
@@ -58,10 +69,44 @@ object LockSessionManager {
     }
 
     /**
-     * Empty/simple updates for active packagename tracking.
+     * Track active foreground package changes.
+     * When the user transitions AWAY from a locked package, we re-lock it immediately (remove from unlockedPackages)
+     * if the user has configured Immediate locking or if they exited the application.
      */
     fun updateForegroundPackage(packageName: String, context: android.content.Context) {
-        // Sessions are preserved reliably until the physical device screen is locked.
+        if (packageName.isBlank()) return
+
+        val app = context.applicationContext as? com.example.AppLockApplication
+        val behavior = app?.encryptedPrefs?.getLockReLockBehavior() ?: "Until Screen Off"
+        if (behavior == "Until Screen Off") {
+            // Under "Until Screen Off" behavior, once an app is unlocked, it remains unlocked until the device screen locks.
+            // Therefore, we do not clear unlocked_packages when transitioning back to home launcher or key-switching apps.
+            return
+        }
+
+        // If transitioning back to launcher or our own lock app, we definitely lock any other unlocked app immediately!
+        if (packageName == "com.aistudio.applock.vqpstz" || packageName.startsWith("com.example.") || isLauncherPackage(packageName)) {
+            synchronized(unlockedPackages) {
+                unlockedPackages.clear()
+            }
+            return
+        }
+
+        // If another locked app or background app becomes active, lock other apps that were unlocked
+        synchronized(unlockedPackages) {
+            val iterator = unlockedPackages.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                if (entry.key != packageName) {
+                    iterator.remove()
+                }
+            }
+        }
+    }
+
+    private fun isLauncherPackage(packageName: String): Boolean {
+        val lower = packageName.lowercase()
+        return lower.contains("launcher") || lower.contains("home") || lower.contains("pixel") || lower.contains("trebuchet") || lower.contains("carlauncher")
     }
 
     /**
@@ -83,7 +128,7 @@ object LockSessionManager {
      */
     fun isAppLocked(packageName: String, timeoutMs: Long): Boolean {
         // 1. Do not lock the App Lock application itself
-        if (packageName == "com.example" || packageName.startsWith("com.example.")) {
+        if (packageName == "com.aistudio.applock.vqpstz" || packageName.startsWith("com.example.")) {
             return false
         }
 

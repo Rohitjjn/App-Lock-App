@@ -17,60 +17,99 @@ import androidx.compose.runtime.SideEffect
 
 private val DarkColorScheme =
   darkColorScheme(
-    primary = AppAccent,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-    background = AppBgDark,
-    surface = AppBgDark,
-    onPrimary = AppBgDark,
-    onBackground = AppTextDark,
-    onSurface = AppTextDark,
-    surfaceVariant = Color(0xFF2C2C2C),
-    onSurfaceVariant = AppTextDark
+    primary = XaiWhite,                   // White is the primary voice
+    secondary = XaiBodyText,
+    tertiary = Color.Black,
+    background = XaiCanvas,               // #0A0A0A
+    surface = XaiCanvas,                  // #0A0A0A
+    onPrimary = XaiOnWhite,               // Near-black text on white CTA
+    onBackground = XaiWhite,
+    onSurface = XaiWhite,
+    surfaceVariant = XaiCanvasCard,       // #191919 feature cards
+    onSurfaceVariant = XaiBodyText,
+    outline = XaiHairline,                 // #212327 for elegant 1px borders
+    primaryContainer = XaiCanvasSoft,
+    onPrimaryContainer = XaiWhite
   )
 
+// We map LightColorScheme to a beautiful dark state as well,
+// perfectly respecting the "Don't introduce a light-mode counterpart. xAI is dark-canvas only" policy.
 private val LightColorScheme =
   lightColorScheme(
-    primary = AppAccent,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = AppBgLight,
-    surface = AppBgLight,
-    onPrimary = AppBgLight,
-    onBackground = AppTextLight,
-    onSurface = AppTextLight,
-    surfaceVariant = Color(0xFFF5F5F5),
-    onSurfaceVariant = AppTextLight
+    primary = XaiBlack,                  // Black is the primary voice in light mode
+    secondary = XaiLightBodyText,
+    tertiary = Color.Black,
+    background = XaiLightCanvas,          // Off-white (#F9F9FB)
+    surface = XaiLightCanvas,             // Off-white (#F9F9FB)
+    onPrimary = XaiWhite,                 // White text on black CTA
+    onBackground = XaiBlack,
+    onSurface = XaiBlack,
+    surfaceVariant = XaiLightCanvasCard,  // Pure white card surfaces
+    onSurfaceVariant = XaiLightBodyText,
+    outline = XaiLightHairline,            // Light border line (#D2D4D8)
+    primaryContainer = XaiLightCanvasSoft,
+    onPrimaryContainer = XaiBlack
   )
+
+val LocalAccentColor = androidx.compose.runtime.staticCompositionLocalOf { Color.Black }
 
 @Composable
 fun MyApplicationTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
-  // Disabling dynamic colors by default to preserve the exact brand color identity requested by the user
   dynamicColor: Boolean = false,
+  accentColorHex: String? = null,
   content: @Composable () -> Unit,
 ) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+  val context = LocalContext.current
+  val app = context.applicationContext as? com.example.AppLockApplication
+  val hex = accentColorHex ?: app?.encryptedPrefs?.getAccentColorHex() ?: "Default"
+  val resolvedAccent = if (hex == "Default") {
+      if (darkTheme) Color.White else Color.Black
+  } else {
+      try {
+          if (hex.startsWith("#")) {
+              Color(android.graphics.Color.parseColor(hex))
+          } else {
+              Color(android.graphics.Color.parseColor("#$hex"))
+          }
+      } catch (e: Exception) {
+          if (darkTheme) Color.White else Color.Black
       }
+  }
 
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
-    }
+  val customDarkColorScheme = if (hex == "Default") {
+      DarkColorScheme
+  } else {
+      DarkColorScheme.copy(
+          primary = resolvedAccent,
+          tertiary = resolvedAccent,
+          onPrimaryContainer = resolvedAccent
+      )
+  }
+  val customLightColorScheme = if (hex == "Default") {
+      LightColorScheme
+  } else {
+      LightColorScheme.copy(
+          primary = resolvedAccent,
+          tertiary = resolvedAccent,
+          onPrimaryContainer = resolvedAccent
+      )
+  }
+  val colorScheme = if (darkTheme) customDarkColorScheme else customLightColorScheme
 
   val view = LocalView.current
   if (!view.isInEditMode) {
     SideEffect {
       val window = (view.context as? Activity)?.window
       if (window != null) {
+        // Dynamic styling of status bar and navigation bar depending on theme
         WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
       }
     }
   }
 
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  androidx.compose.runtime.CompositionLocalProvider(LocalAccentColor provides resolvedAccent) {
+      MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  }
 }

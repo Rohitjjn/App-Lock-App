@@ -10,8 +10,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material3.*
@@ -81,11 +85,25 @@ fun PinPad(
         }
     }
 
-    // Colors matching user requirements: Accent is #FF6B6B, text is #1A1A1A, bg is #FFFFFF (with system isSystemInDarkTheme validation)
-    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background == Color(0xFF1A1A1A)
-    val accentColor = Color(0xFFFF6B6B)
-    val textColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF1A1A1A)
-    val circleButtonBg = if (isDark) Color(0xFF2C2C2C) else Color(0xFFF5F5F5)
+    val isDark = isSystemInDarkTheme()
+    val accentColor = com.example.ui.theme.LocalAccentColor.current
+    val textColor = if (isDark) Color.White else Color.Black
+    val circleButtonBg = if (isDark) Color(0xFF191919) else Color(0xFFEDEDF0)
+
+    val app = context.applicationContext as com.example.AppLockApplication
+    val encryptedPrefs = app.encryptedPrefs
+    val liquidGlassLook = remember { encryptedPrefs.getLockLiquidGlassLook() }
+
+    val pinFontSize = remember { encryptedPrefs.getLockPinFontSize() }
+
+    val pinFontColor = textColor
+    val pinDotOutlineColor = textColor.copy(alpha = 0.3f)
+    val pinDotFilledColor = accentColor
+    val keypadButtonShape = androidx.compose.foundation.shape.CircleShape
+    val keypadDotShape = androidx.compose.foundation.shape.CircleShape
+    val keypadFontFamily = androidx.compose.ui.text.font.FontFamily.Default
+
+    val isGlass = liquidGlassLook != "None"
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -107,9 +125,9 @@ fun PinPad(
             for (i in 0 until totalDots) {
                 val isFilled = i < enteredPin.length
                 val dotColor = if (isWrong || isFilled) {
-                    accentColor
+                    pinDotFilledColor
                 } else {
-                    textColor.copy(alpha = 0.2f)
+                    Color.Transparent
                 }
 
                 val dotScale by animateFloatAsState(
@@ -126,12 +144,12 @@ fun PinPad(
                             scaleX = dotScale
                             scaleY = dotScale
                         }
-                        .clip(CircleShape)
+                        .clip(keypadDotShape)
                         .background(dotColor)
                         .border(
-                            width = if (!isFilled) 1.5.dp else 0.dp,
-                            color = if (isWrong) accentColor else textColor.copy(alpha = 0.3f),
-                            shape = CircleShape
+                            width = 1.5.dp,
+                            color = if (isWrong) pinDotFilledColor else if (isFilled) Color.Transparent else pinDotOutlineColor,
+                            shape = keypadDotShape
                         )
                 )
             }
@@ -156,54 +174,38 @@ fun PinPad(
                 ) {
                     rowKeys.forEach { key ->
                         if (key.isEmpty()) {
-                            Spacer(modifier = Modifier.size(72.dp))
+                            Spacer(modifier = Modifier.size(74.dp))
                         } else {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(CircleShape)
-                                    .background(circleButtonBg)
-                                    .clickable {
-                                        if (isWrong) return@clickable
-                                        playClickVibration()
-                                        
-                                        if (key == "C") {
-                                            if (enteredPin.isNotEmpty()) {
-                                                enteredPin = enteredPin.dropLast(1)
-                                            }
-                                        } else {
-                                            if (enteredPin.length < 16) {
-                                                val nextPin = enteredPin + key
-                                                enteredPin = nextPin
-                                                if (nextPin.length == pinLength) {
-                                                    if (pinHash == null || com.example.util.HashUtil.verify(nextPin, pinHash)) {
-                                                        onUnlockSuccess()
-                                                    } else {
-                                                        isWrong = true
-                                                    }
+                            PremiumKeyButton(
+                                key = key,
+                                isWrong = isWrong,
+                                fontColor = pinFontColor,
+                                fontSize = pinFontSize.toFloat(),
+                                isDark = isDark,
+                                accentColor = accentColor,
+                                onTap = {
+                                    if (isWrong) return@PremiumKeyButton
+                                    playClickVibration()
+                                    
+                                    if (key == "C") {
+                                        if (enteredPin.isNotEmpty()) {
+                                            enteredPin = enteredPin.dropLast(1)
+                                        }
+                                    } else {
+                                        if (enteredPin.length < 16) {
+                                            val nextPin = enteredPin + key
+                                            enteredPin = nextPin
+                                            if (nextPin.length == pinLength) {
+                                                if (pinHash == null || com.example.util.HashUtil.verify(nextPin, pinHash)) {
+                                                    onUnlockSuccess()
+                                                } else {
+                                                    isWrong = true
                                                 }
                                             }
                                         }
                                     }
-                                    .testTag("pin_button_$key")
-                            ) {
-                                if (key == "C") {
-                                    Icon(
-                                        imageVector = Icons.Default.Backspace,
-                                        contentDescription = "Backspace Button",
-                                        tint = textColor,
-                                        modifier = Modifier.size(26.dp)
-                                    )
-                                } else {
-                                    Text(
-                                        text = key,
-                                        fontSize = 28.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = textColor
-                                    )
                                 }
-                            }
+                            )
                         }
                     }
                 }
@@ -220,6 +222,96 @@ fun PinPad(
             delay(1000)
             enteredPin = ""
             isWrong = false
+        }
+    }
+}
+
+data class SparkleParticle(
+    val id: Long,
+    val x: Float,
+    val y: Float,
+    val vx: Float,
+    val vy: Float,
+    val alpha: Float,
+    val size: Float,
+    val color: Color
+)
+
+@Composable
+fun PremiumKeyButton(
+    key: String,
+    isWrong: Boolean,
+    fontColor: Color,
+    fontSize: Float,
+    isDark: Boolean,
+    accentColor: Color,
+    onTap: () -> Unit
+) {
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.86f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "button_scale"
+    )
+
+    val buttonBg = if (isDark) {
+        Color.White.copy(alpha = 0.08f)
+    } else {
+        Color.Black.copy(alpha = 0.05f)
+    }
+
+    val borderCol = if (isDark) {
+        Color.White.copy(alpha = 0.15f)
+    } else {
+        Color.Black.copy(alpha = 0.1f)
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(74.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = !isWrong
+            ) {
+                onTap()
+            }
+            .testTag("pin_button_$key")
+    ) {
+        // Inner actual glass button shape
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(70.dp)
+                .clip(CircleShape)
+                .background(buttonBg)
+                .border(1.dp, borderCol, CircleShape)
+        ) {
+            if (key == "C") {
+                Icon(
+                    imageVector = Icons.Default.Backspace,
+                    contentDescription = "Backspace Button",
+                    tint = fontColor,
+                    modifier = Modifier.size(26.dp)
+                )
+            } else {
+                Text(
+                    text = key,
+                    fontSize = fontSize.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = fontColor
+                )
+            }
         }
     }
 }

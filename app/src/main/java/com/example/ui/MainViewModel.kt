@@ -16,6 +16,7 @@ import com.example.util.HashUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @androidx.compose.runtime.Immutable
 data class AppItem(
@@ -33,7 +34,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app = application as AppLockApplication
     private val repository: AppLockRepository = app.repository
-    private val encryptedPrefs = app.encryptedPrefs
+    val encryptedPrefs = app.encryptedPrefs
 
     // Cache list of installed launcher apps
     private val _installedApps = MutableStateFlow<List<AppItem>>(emptyList())
@@ -48,12 +49,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val lockMethod = MutableStateFlow(encryptedPrefs.getLockMethod())
     val vibrationEnabled = MutableStateFlow(encryptedPrefs.isVibrationEnabled())
     val themeMode = MutableStateFlow(encryptedPrefs.getThemeMode())
+    val accentColorHex = MutableStateFlow(encryptedPrefs.getAccentColorHex())
     val lockTimeoutMs = MutableStateFlow(encryptedPrefs.getLockTimeoutMs())
+    val lockReLockBehavior = MutableStateFlow(encryptedPrefs.getLockReLockBehavior())
     val intruderSelfieEnabled = MutableStateFlow(encryptedPrefs.isIntruderSelfieEnabled())
+    val isShieldEnabled = MutableStateFlow(encryptedPrefs.isShieldEnabled())
+    val isAppIconHidden = MutableStateFlow(encryptedPrefs.isAppIconHidden())
     val isMultiLockEnabled = MutableStateFlow(encryptedPrefs.isMultiLockEnabled())
     val multiLockSequence = MutableStateFlow(encryptedPrefs.getMultiLockSequence())
     val isAppLaunchBiometricEnabled = MutableStateFlow(encryptedPrefs.isAppLaunchBiometricEnabled())
     val biometricAutoPromptEnabled = MutableStateFlow(encryptedPrefs.isBiometricAutoPromptEnabled())
+
+    // Custom lock screen customisation flows
+    val lockClockStyle = MutableStateFlow(encryptedPrefs.getLockClockStyle())
+    val lockClockFont = MutableStateFlow(encryptedPrefs.getLockClockFont())
+    val lockClockSize = MutableStateFlow(encryptedPrefs.getLockClockSize())
+    val lockClockWeight = MutableStateFlow(encryptedPrefs.getLockClockWeight())
+    val lockClockPosition = MutableStateFlow(encryptedPrefs.getLockClockPosition())
+    val lockBackgroundTheme = MutableStateFlow(encryptedPrefs.getLockBackgroundTheme())
+    val lockLiquidGlassLook = MutableStateFlow(encryptedPrefs.getLockLiquidGlassLook())
+    val lockButtonShape = MutableStateFlow(encryptedPrefs.getLockButtonShape())
 
     fun updateAppLaunchBiometricEnabled(enabled: Boolean) {
         isAppLaunchBiometricEnabled.value = enabled
@@ -235,14 +250,114 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         encryptedPrefs.saveThemeMode(mode)
     }
 
+    fun updateAccentColorHex(hex: String) {
+        accentColorHex.value = hex
+        encryptedPrefs.saveAccentColorHex(hex)
+    }
+
     fun updateLockTimeoutMs(timeoutMs: Long) {
         lockTimeoutMs.value = timeoutMs
         encryptedPrefs.saveLockTimeoutMs(timeoutMs)
     }
 
+    fun updateLockReLockBehavior(behavior: String) {
+        lockReLockBehavior.value = behavior
+        encryptedPrefs.saveLockReLockBehavior(behavior)
+    }
+
     fun updateIntruderSelfieEnabled(enabled: Boolean) {
         intruderSelfieEnabled.value = enabled
         encryptedPrefs.setIntruderSelfieEnabled(enabled)
+    }
+
+    fun updateAppIconHidden(hidden: Boolean) {
+        isAppIconHidden.value = hidden
+        encryptedPrefs.setAppIconHidden(hidden)
+    }
+
+    fun updateShieldEnabled(context: Context, enabled: Boolean) {
+        isShieldEnabled.value = enabled
+        viewModelScope.launch(Dispatchers.IO) {
+            encryptedPrefs.setShieldEnabled(enabled)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    android.service.quicksettings.TileService.requestListeningState(
+                        context,
+                        android.content.ComponentName(context, "com.example.service.SafeLockTileService")
+                    )
+                    withContext(Dispatchers.Main) {
+                        com.example.service.SafeLockTileService.updateActiveTile()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Lock screen customisation setters
+    fun updateLockClockStyle(style: String) {
+        lockClockStyle.value = style
+        encryptedPrefs.saveLockClockStyle(style)
+    }
+
+    fun updateLockClockFont(font: String) {
+        lockClockFont.value = font
+        encryptedPrefs.saveLockClockFont(font)
+    }
+
+    fun updateLockClockSize(size: String) {
+        lockClockSize.value = size
+        encryptedPrefs.saveLockClockSize(size)
+    }
+
+    fun updateLockClockWeight(weight: String) {
+        lockClockWeight.value = weight
+        encryptedPrefs.saveLockClockWeight(weight)
+    }
+
+    fun updateLockClockPosition(position: String) {
+        lockClockPosition.value = position
+        encryptedPrefs.saveLockClockPosition(position)
+    }
+
+    fun updateLockBackgroundTheme(theme: String) {
+        lockBackgroundTheme.value = theme
+        encryptedPrefs.saveLockBackgroundTheme(theme)
+    }
+
+    fun updateLockLiquidGlassLook(look: String) {
+        lockLiquidGlassLook.value = look
+        encryptedPrefs.saveLockLiquidGlassLook(look)
+    }
+
+    fun updateLockButtonShape(shape: String) {
+        lockButtonShape.value = shape
+        encryptedPrefs.saveLockButtonShape(shape)
+    }
+
+    fun resetLockCustomisationToDefault() {
+        encryptedPrefs.resetLockCustomisationToDefault()
+        lockClockStyle.value = encryptedPrefs.getLockClockStyle()
+        lockClockFont.value = encryptedPrefs.getLockClockFont()
+        lockClockSize.value = encryptedPrefs.getLockClockSize()
+        lockClockWeight.value = encryptedPrefs.getLockClockWeight()
+        lockClockPosition.value = encryptedPrefs.getLockClockPosition()
+        lockBackgroundTheme.value = encryptedPrefs.getLockBackgroundTheme()
+        lockLiquidGlassLook.value = encryptedPrefs.getLockLiquidGlassLook()
+        lockButtonShape.value = encryptedPrefs.getLockButtonShape()
+        accentColorHex.value = encryptedPrefs.getAccentColorHex()
+    }
+
+    fun refreshLockCustomisationFlows() {
+        lockClockStyle.value = encryptedPrefs.getLockClockStyle()
+        lockClockFont.value = encryptedPrefs.getLockClockFont()
+        lockClockSize.value = encryptedPrefs.getLockClockSize()
+        lockClockWeight.value = encryptedPrefs.getLockClockWeight()
+        lockClockPosition.value = encryptedPrefs.getLockClockPosition()
+        lockBackgroundTheme.value = encryptedPrefs.getLockBackgroundTheme()
+        lockLiquidGlassLook.value = encryptedPrefs.getLockLiquidGlassLook()
+        lockButtonShape.value = encryptedPrefs.getLockButtonShape()
     }
 
     // PIN preference helpers

@@ -159,7 +159,7 @@ fun GuideHeaderCard(tabIndex: Int) {
     val subtitle = when (tabIndex) {
         0 -> "Learn how SafeLock's overlay background protection engine keeps your device securely shielded on a core system level."
         1 -> "Explore PIN codes, custom swipe patterns, bottom-relocated fingerprint triggers, and stealth photo logs."
-        else -> "Crucial steps for persistent protection: system-level configurations, battery exemptions, and OEM overrides."
+        else -> "Crucial steps for persistent protection: system-level configurations and OEM overrides."
     }
 
     val icon = when (tabIndex) {
@@ -300,15 +300,6 @@ fun SetupFixesTabContent() {
 
         SetupStepWidget(
             stepNumber = "STEP 3",
-            title = "Ignore Battery Optimizations",
-            icon = Icons.Default.BatteryAlert,
-            color = Color(0xFF10AC84),
-            instructions = "1. Deep system-sleep monitors can kill background helper apps to save juice.\n2. Tap 'Ignore Battery Optimizations' inside the Settings page.\n3. Turn on the exception exception to grant safe background operations.",
-            importanceFocus = "Prevents OS RAM-cleaner services from aggressively destroying or interrupting background surveillance filters."
-        )
-
-        SetupStepWidget(
-            stepNumber = "STEP 4",
             title = "Realme & OEM Auto-Start Guide",
             icon = Icons.Default.Bolt,
             color = Color(0xFF2E86DE),
