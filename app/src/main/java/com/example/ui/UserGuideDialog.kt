@@ -232,7 +232,7 @@ fun IntroTabContent() {
             title = "2. Background Intercept Engine",
             icon = Icons.Default.Memory,
             color = Color(0xFF2E86DE),
-            descriptionText = "When a secure app (like WhatsApp, Settings or a customized selection) is launched, the SafeLock Accessibility Service instantly detects the target transition. It immediately overlays our custom high-security validation screen, preventing unauthorized inputs."
+            descriptionText = "When a secure app (like WhatsApp, Settings or a customized selection) is launched, the SafeLock Usage Stats detector instantly detects the target transition. It immediately overlays our custom high-security validation screen, preventing unauthorized inputs."
         )
 
         DetailGuideCard(
@@ -282,11 +282,11 @@ fun SetupFixesTabContent() {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SetupStepWidget(
             stepNumber = "STEP 1",
-            title = "Configure Accessibility Service",
+            title = "Configure Usage Access",
             icon = Icons.Default.SystemUpdateAlt,
             color = Color(0xFFE94560),
             instructions = "1. Go to Settings and tap 'CLICK HERE TO CONFIGURE SYSTEM ACCESS'.\n2. Locate 'SafeLock' under the Installed Apps list.\n3. Turn the service switch ON to grant core launch-intercept capabilities.",
-            importanceFocus = "Crucial Requirement! Accessibility serves as the core intercept mechanism. Without this granted permission, SafeLock cannot block application launches."
+            importanceFocus = "Crucial Requirement! Usage Access serves as the core intercept mechanism. Without this granted permission, SafeLock cannot block application launches."
         )
 
         SetupStepWidget(

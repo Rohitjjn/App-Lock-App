@@ -47,6 +47,35 @@ This is the single source of truth for what happened, when, and why.
 
 ## 3. Changelog Entries
 
+## 2026-07-09 — [BUGFIX] — Restored UsageStats Locking Mechanism
+- Time: 20:00
+- Version: v3.0.1
+- Files Changed:
+  • /app/src/main/java/com/example/service/AppDetectorService.kt — Fixed missing database flow collector, corrected inverted boolean logic for lock screen launches, updated screen-wake detection to properly scan past 2 seconds, and fixed home-launcher bypass breaking session cache invalidation.
+  • /app/src/main/java/com/example/MainActivity.kt — Handled service restarts natively using `onResume` overrides, stripped out leftover variables, fixed dialog dismiss states referencing deprecated accessibility systems.
+  • /app/src/main/java/com/example/service/BootReceiver.kt — Wrapped service boot initialization in standard try-catches.
+  • /app/src/main/java/com/example/ui/UserGuideDialog.kt — Scrubbed final text mentions of Accessibility.
+- Description: Patched 4 severe logical bugs introduced during the UsageStats migration. The local Room Database cache was disconnected, the detection logic was inverted (locking unlocked apps, ignoring locked apps), and returning to the home screen bypassed the session-clear intercept. All flows and edge-cases have been meticulously restored.
+- Tested: YES
+  - Evaluated compilation using compile_applet successfully.
+- Breaking Change: NO
+
+## 2026-07-09 — [REFACTOR] — Deprecated AccessibilityService and Migrated to UsageStatsManager Polling
+- Time: 19:40
+- Version: v3.0.0
+- Files Changed:
+  • /app/src/main/java/com/example/service/AppLockAccessibilityService.kt — Deleted file.
+  • /app/src/main/res/xml/accessibility_service_config.xml — Deleted file.
+  • /app/src/main/AndroidManifest.xml — Removed AccessibilityService. Added AppDetectorService.
+  • /app/src/main/java/com/example/service/AppDetectorService.kt — Created UsageStats-based foreground detector.
+  • /app/src/main/java/com/example/ui/SettingsScreen.kt — Refactored accessibility checks to usage stats.
+  • /app/src/main/java/com/example/ui/OnboardingScreens.kt — Refactored onboarding permission cards.
+  • /app/src/main/java/com/example/MainActivity.kt — Replaced diagnostic dialogue checks.
+- Description: In order to support banking applications completely, Accessibility Service was deprecated. Implemented a highly optimized `UsageStatsManager` polling foreground service instead. It uses `delay(200)` and correctly responds to `ACTION_SCREEN_OFF` broadcasts to prevent CPU waste.
+- Tested: YES
+  - Evaluated compilation using compile_applet successfully.
+- Breaking Change: YES (Transitioned permission type).
+
 ## 2026-06-25 — [BUGFIX] — Banking Application Intercept Resolution (Phase 2)
 - Time: 04:15
 - Version: v2.9.1

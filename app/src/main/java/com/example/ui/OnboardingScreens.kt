@@ -368,12 +368,12 @@ fun OnboardingPermissionsScreenContent(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    var isAccessibilityActive by remember { mutableStateOf(false) }
+    var isUsageStatsActive by remember { mutableStateOf(false) }
     var isCameraActive by remember { mutableStateOf(false) }
     var isNotificationActive by remember { mutableStateOf(false) }
 
     val updateChecks = {
-        isAccessibilityActive = isAccessibilityEnabledLocally(context)
+        isUsageStatsActive = hasUsageStatsPermission(context)
         isCameraActive = ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.CAMERA
@@ -427,8 +427,8 @@ fun OnboardingPermissionsScreenContent(
         }
     }
 
-    // Determine if mandatory is active (either Notification on older SDK is fine, Accessibility is mandatory everywhere)
-    val mandatoryPermissionsActive = isAccessibilityActive && isNotificationActive
+    // Determine if mandatory is active (either Notification on older SDK is fine, UsageStats is mandatory everywhere)
+    val mandatoryPermissionsActive = isUsageStatsActive && isNotificationActive
 
     Box(
         modifier = Modifier
@@ -485,16 +485,16 @@ fun OnboardingPermissionsScreenContent(
                 modifier = Modifier.align(Alignment.Start).padding(bottom = 10.dp)
             )
 
-            // 1. Accessibility Service Card
+            // 1. Usage Stats Service Card
             PermissionCard(
-                title = "Accessibility Monitoring",
-                description = "Monitors top foreground packages to intercept and display security verification layouts.",
-                icon = Icons.Default.SettingsAccessibility,
-                isActive = isAccessibilityActive,
+                title = "Usage Stats Monitoring",
+                description = "Required to accurately and safely detect foreground application changes.",
+                icon = Icons.Default.QueryStats,
+                isActive = isUsageStatsActive,
                 onClick = {
-                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                     context.startActivity(intent)
-                    Toast.makeText(context, "Enable accessibility for 'SafeLock Shield'", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Enable Usage Access for 'SafeLock'", Toast.LENGTH_LONG).show()
                 },
                 accentColor = MaterialTheme.colorScheme.primary
             )
@@ -728,21 +728,21 @@ fun PermissionCard(
     }
 }
 
-private fun isAccessibilityEnabledLocally(context: Context): Boolean {
-    return try {
-        val expectedId = android.content.ComponentName(context, com.example.service.AppLockAccessibilityService::class.java).flattenToShortString()
-        val settingValue = Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
-        val colonSplitter = settingValue.split(':')
-        for (id in colonSplitter) {
-            if (id.equals(expectedId, ignoreCase = true)) {
-                return true
-            }
-        }
-        false
-    } catch (e: Exception) {
-        false
+private fun hasUsageStatsPermission(context: Context): Boolean {
+    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        appOps.unsafeCheckOpNoThrow(
+            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            context.packageName
+        )
+    } else {
+        @Suppress("DEPRECATION")
+        appOps.checkOpNoThrow(
+            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            context.packageName
+        )
     }
+    return mode == android.app.AppOpsManager.MODE_ALLOWED
 }

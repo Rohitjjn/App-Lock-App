@@ -231,7 +231,7 @@ class LockActivity : FragmentActivity() {
         }
 
         if (byBackPress) {
-            // Set flag so AccessibilityService performs safe auto-back bypass on the target app
+            // Set flag so AppDetectorService performs safe auto-back bypass on the target app
             LockSessionManager.cancelActionPendingFor = lockedPackageName
         }
         

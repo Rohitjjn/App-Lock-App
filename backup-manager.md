@@ -51,6 +51,7 @@ This file tracks ALL project backups. Every time code changes are made, a new ba
 
 | Version | Date | Description | Status | File Count | Size | Working Features | Pending |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| v3.0.0 | 2026-07-09 | Migrated to UsageStats Foreground Service polling, deprecated Accessibility | Stable | 54 | 205KB | Full app locker using UsageStats (200ms delay) with screen sleep optimisations | Testing |
 | v2.9.1 | 2026-06-25 | Phase 2 banking app fix - stripped Accessibility screen reading flags dynamically | Stable | 54 | 200KB | Native AppLock functionality bypassing major banking security apps | Testing |
 | v2.8.0 | 2026-06-19 | Configured Compass Disguise icon change, onboarding permission lifecycles, and stripped third-party uninstall systems | Stable | 54 | 200KB | Custom Compass Icon, Device Admin, Biometrics, Dynamic list-view | Testing |
 | v2.7.0 | 2026-06-18 | Converted hide icon option into robust Activity-Alias Calculator Disguise | Stable | 53 | 198KB | Calculator Icon Disguise, Lock interfaces | Testing |

@@ -1,6 +1,6 @@
 package com.example
 
-import android.accessibilityservice.AccessibilityService
+
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.service.AppLockAccessibilityService
 import com.example.service.KeepAliveService
 import com.example.ui.AppListScreen
 import com.example.ui.MainViewModel
@@ -85,6 +84,15 @@ class MainActivity : FragmentActivity() {
             MyApplicationTheme(darkTheme = useDarkTheme, accentColorHex = accentColorHex) {
                 MainLayout(viewModel)
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (hasUsageStatsPermission(this)) {
+            try {
+                com.example.service.AppDetectorService.start(this)
+            } catch (e: Exception) {}
         }
     }
 
@@ -213,11 +221,13 @@ class MainActivity : FragmentActivity() {
         var selectedTab by remember { mutableStateOf(0) }
         var showDiagnosticDialog by remember { mutableStateOf(false) }
 
-        // Automatically prompt diagnostic check if core accessibility is inactive inside the main app
+        // Automatically prompt diagnostic check if usage stats is inactive inside the main app
         LaunchedEffect(Unit) {
-            val isAccessibilityActive = isAccessibilityServiceEnabled(context, AppLockAccessibilityService::class.java)
-            if (!isAccessibilityActive) {
+            val isUsageStatsActive = hasUsageStatsPermission(context)
+            if (!isUsageStatsActive) {
                 showDiagnosticDialog = true
+            } else {
+                com.example.service.AppDetectorService.start(context)
             }
         }
 
@@ -280,13 +290,13 @@ class MainActivity : FragmentActivity() {
         val context = LocalContext.current
         val isFirst = remember { viewModel.isFirstLaunch() }
 
-        var isAccessibilityActive by remember { mutableStateOf(false) }
+        var isUsageStatsActive by remember { mutableStateOf(false) }
         var isCameraPermActive by remember { mutableStateOf(false) }
         var isNotificationPermActive by remember { mutableStateOf(false) }
         var showOemInstructionsDialog by remember { mutableStateOf(false) }
 
         val checkPermissions = {
-            isAccessibilityActive = isAccessibilityServiceEnabled(context, AppLockAccessibilityService::class.java)
+            isUsageStatsActive = hasUsageStatsPermission(context)
             isCameraPermActive = ContextCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.CAMERA
@@ -330,16 +340,16 @@ class MainActivity : FragmentActivity() {
 
         AlertDialog(
             onDismissRequest = {
-                // Do not dismiss wizard on outside clicks unless accessibility is active
-                if (!isFirst || isAccessibilityActive) {
+                // Do not dismiss wizard on outside clicks unless usage stats is active
+                if (!isFirst || isUsageStatsActive) {
                     onDismiss()
                 }
             },
             modifier = Modifier.fillMaxWidth(0.95f),
             properties = androidx.compose.ui.window.DialogProperties(
                 usePlatformDefaultWidth = false,
-                dismissOnBackPress = !isFirst || isAccessibilityActive,
-                dismissOnClickOutside = !isFirst || isAccessibilityActive
+                dismissOnBackPress = !isFirst || isUsageStatsActive,
+                dismissOnClickOutside = !isFirst || isUsageStatsActive
             ),
             title = {
                 Row(
@@ -392,7 +402,7 @@ class MainActivity : FragmentActivity() {
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "Please complete the setup to start locking applications. Accessibility Monitoring is required to protect your privacy.",
+                                        text = "Please complete the setup to start locking applications. Usage Stats Monitoring is required to protect your privacy.",
                                         fontSize = 11.sp,
                                         lineHeight = 15.sp,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -411,26 +421,26 @@ class MainActivity : FragmentActivity() {
                         )
                     }
 
-                    // 1. Accessibility Service Card
+                    // 1. Usage Stats Service Card
                     item {
                         StatusIndicatorCard(
-                            title = "Accessibility Monitoring",
+                            title = "Usage Stats Monitoring",
                             description = "Required to instantly intercept and secure access to selected apps.",
-                            isActive = isAccessibilityActive,
+                            isActive = isUsageStatsActive,
                             activeLabel = "ACTIVE & PROTECTING",
                             inactiveLabel = "DISABLED",
-                            testTag = "accessibility_status_card"
+                            testTag = "usagestats_status_card"
                         )
-                        if (!isAccessibilityActive) {
+                        if (!isUsageStatsActive) {
                             Spacer(modifier = Modifier.height(6.dp))
                             ActionLaunchCard(
-                                title = "Configure & Enable Accessibility",
+                                title = "Configure & Enable Usage Access",
                                 icon = Icons.Default.Settings,
                                 onClick = {
-                                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                                     context.startActivity(intent)
                                 },
-                                tag = "accessibility_btn"
+                                tag = "usagestats_btn"
                             )
                         }
                     }
@@ -510,8 +520,8 @@ class MainActivity : FragmentActivity() {
             confirmButton = {
                 Button(
                     onClick = {
-                        if (!isAccessibilityActive) {
-                            Toast.makeText(context, "Accessibility Monitoring is mandatory to activate locking!", Toast.LENGTH_LONG).show()
+                        if (!isUsageStatsActive) {
+                            Toast.makeText(context, "Usage Stats Monitoring is mandatory to activate locking!", Toast.LENGTH_LONG).show()
                             return@Button
                         }
                         if (isFirst) {
@@ -719,23 +729,23 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    private fun isAccessibilityServiceEnabled(context: Context, service: Class<out AccessibilityService>): Boolean {
-        return try {
-            val expectedId = ComponentName(context, service).flattenToShortString()
-            val settingValue = Settings.Secure.getString(
-                context.contentResolver,
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-            ) ?: return false
-            val colonSplitter = settingValue.split(':')
-            for (id in colonSplitter) {
-                if (id.equals(expectedId, ignoreCase = true)) {
-                    return true
-                }
-            }
-            false
-        } catch (e: Exception) {
-            false
+    private fun hasUsageStatsPermission(context: Context): Boolean {
+        val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(),
+                context.packageName
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(),
+                context.packageName
+            )
         }
+        return mode == android.app.AppOpsManager.MODE_ALLOWED
     }
 
     private fun Context.findActivity(): androidx.fragment.app.FragmentActivity? {

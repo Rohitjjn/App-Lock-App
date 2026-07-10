@@ -8,7 +8,9 @@ import android.os.Build
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            // Disabled permanently to remove the persistent foreground notification
+            try {
+                com.example.service.AppDetectorService.start(context)
+            } catch (e: Exception) {}
         }
     }
 }

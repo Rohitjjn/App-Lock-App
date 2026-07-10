@@ -90,13 +90,13 @@ fun SettingsScreen(
     var isEnablingTarget by remember { mutableStateOf(false) }
 
     // Diagnostic/Permission States cached top-level to prevent Jitters & Main-thread work during scrolling
-    var isAccessibilityActive by remember { mutableStateOf(false) }
+    var isUsageStatsActive by remember { mutableStateOf(false) }
     var isCameraActive by remember { mutableStateOf(false) }
     var isNotificationActive by remember { mutableStateOf(false) }
 
     val refreshPermissions = remember(context) {
         {
-            isAccessibilityActive = isAccessibilityEnabled(context)
+            isUsageStatsActive = hasUsageStatsPermission(context)
             isCameraActive = ContextCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.CAMERA
@@ -304,9 +304,9 @@ fun SettingsScreen(
         }
     }
 
-    val onAccessibilityClick = remember(context) {
+    val onUsageStatsClick = remember(context) {
         {
-            val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            val intent = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
             context.startActivity(intent)
         }
     }
@@ -583,13 +583,13 @@ fun SettingsScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    // Accessibility Status Button
+                    // UsageStats Status Button
                     PermissionStatusRow(
-                        title = "Accessibility Monitoring",
+                        title = "Usage Stats Monitoring",
                         description = "Required to intercept and lock app background transitions.",
-                        isChecked = isAccessibilityActive,
-                        onClick = onAccessibilityClick,
-                        testTag = "settings_accessibility_toggle"
+                        isChecked = isUsageStatsActive,
+                        onClick = onUsageStatsClick,
+                        testTag = "settings_usagestats_toggle"
                     )
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 8.dp))
@@ -2575,23 +2575,23 @@ fun PermissionStatusRow(
     }
 }
 
-private fun isAccessibilityEnabled(context: android.content.Context): Boolean {
-    return try {
-        val expectedId = android.content.ComponentName(context, com.example.service.AppLockAccessibilityService::class.java).flattenToShortString()
-        val settingValue = android.provider.Settings.Secure.getString(
-            context.contentResolver,
-            android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
-        val colonSplitter = settingValue.split(':')
-        for (id in colonSplitter) {
-            if (id.equals(expectedId, ignoreCase = true)) {
-                return true
-            }
-        }
-        false
-    } catch (e: Exception) {
-        false
+private fun hasUsageStatsPermission(context: android.content.Context): Boolean {
+    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        appOps.unsafeCheckOpNoThrow(
+            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            context.packageName
+        )
+    } else {
+        @Suppress("DEPRECATION")
+        appOps.checkOpNoThrow(
+            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            context.packageName
+        )
     }
+    return mode == android.app.AppOpsManager.MODE_ALLOWED
 }
 
 @Composable
