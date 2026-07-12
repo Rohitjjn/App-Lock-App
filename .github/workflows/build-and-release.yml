@@ -35,7 +35,14 @@ jobs:
       - name: Build Debug APKs
         run: gradle assembleDebug
 
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Debug-APKs
+          path: app/build/outputs/apk/debug/*.apk
+
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/debug/*.apk
