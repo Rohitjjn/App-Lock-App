@@ -26,11 +26,17 @@ jobs:
         with:
           gradle-version: 9.3.1
 
+      - name: Generate Debug Keystore
+        run: keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
+
+      - name: Create .env file
+        run: touch .env
+
       - name: Build Debug APKs
         run: gradle assembleDebug
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/debug/*.apk
           name: Release ${{ github.ref_name }}
