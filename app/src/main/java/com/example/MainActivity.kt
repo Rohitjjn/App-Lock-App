@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.service.KeepAliveService
 import com.example.ui.AppListScreen
@@ -106,6 +107,63 @@ class MainActivity : FragmentActivity() {
         val context = LocalContext.current
         val isFirstLaunch = remember { viewModel.isFirstLaunch() }
         var currentScreenState by remember { mutableStateOf(AppScreenState.SPLASH) }
+
+        // Auto-update checker
+        var updateInfo by remember { mutableStateOf<com.example.util.AutoUpdater.UpdateInfo?>(null) }
+        var isDownloadingUpdate by remember { mutableStateOf(false) }
+        var downloadProgress by remember { mutableStateOf(0) }
+        val scope = rememberCoroutineScope()
+
+        LaunchedEffect(Unit) {
+            val currentVersion = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+            } catch (e: Exception) { "1.0.0" }
+            updateInfo = com.example.util.AutoUpdater.checkForUpdate(currentVersion)
+        }
+
+        if (updateInfo != null) {
+            AlertDialog(
+                onDismissRequest = { if (!isDownloadingUpdate) updateInfo = null },
+                title = { Text("New Update Available", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        Text("Version ${updateInfo!!.version} is available for download.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(updateInfo!!.releaseNotes, fontSize = 13.sp)
+                        if (isDownloadingUpdate) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            LinearProgressIndicator(
+                                progress = { downloadProgress / 100f },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text("$downloadProgress%", modifier = Modifier.align(Alignment.End), fontSize = 12.sp)
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            isDownloadingUpdate = true
+                            scope.launch {
+                                com.example.util.AutoUpdater.downloadAndInstall(context, updateInfo!!.downloadUrl) { progress ->
+                                    downloadProgress = progress
+                                }
+                            }
+                        },
+                        enabled = !isDownloadingUpdate
+                    ) {
+                        Text(if (isDownloadingUpdate) "Downloading..." else "Update Now")
+                    }
+                },
+                dismissButton = {
+                    if (!isDownloadingUpdate) {
+                        TextButton(onClick = { updateInfo = null }) {
+                            Text("Later")
+                        }
+                    }
+                }
+            )
+        }
 
         Crossfade(targetState = currentScreenState, label = "screen_navigation") { screenState ->
             when (screenState) {

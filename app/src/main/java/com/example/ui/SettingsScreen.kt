@@ -453,6 +453,21 @@ fun SettingsScreen(
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
 
+                    val isMultiLockEnabled by viewModel.isMultiLockEnabled.collectAsStateWithLifecycle()
+                    val currentLockMethod by viewModel.lockMethod.collectAsStateWithLifecycle()
+                    if (!isMultiLockEnabled && currentLockMethod != com.example.data.model.LockMethod.DEFAULT) {
+                        val isSingleBiometricEnabled by viewModel.isSingleBiometricEnabled.collectAsStateWithLifecycle()
+                        SettingsSwitchRow(
+                            title = "Enable Biometric (Single Protocol)",
+                            subtitle = "Use fingerprint alongside single lock method",
+                            isChecked = isSingleBiometricEnabled,
+                            onCheckedChange = { viewModel.updateSingleBiometricEnabled(it) },
+                            icon = Icons.Default.Fingerprint,
+                            tag = "single_biometric_switch"
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    }
+
                     // Change PIN action
                     SettingsActionRow(
                         title = "Change Password PIN",
@@ -2348,13 +2363,6 @@ fun ClockStyleMiniaturePreview(style: String, accentColor: Color, isDark: Boolea
                 "24-Hour Digital" -> {
                     Text("21:41", color = textMain, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
                 }
-                "Two-Line Stacked" -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("09", color = textMain, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        Text("/", color = accentColor.copy(alpha = 0.5f), fontSize = 9.sp, modifier = Modifier.padding(horizontal = 2.dp))
-                        Text("41", color = accentColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
                 "Retro Minimalist hh.mm" -> {
                     Text("09.41", color = accentColor, fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                 }
@@ -2411,7 +2419,6 @@ fun ClockStyleSelectorDialog(
         "Default",
         "Standard AM/PM",
         "24-Hour Digital",
-        "Two-Line Stacked",
         "Retro Minimalist hh.mm",
         "Dotted Center hh•mm",
         "Military Modern",

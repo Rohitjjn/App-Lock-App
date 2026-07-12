@@ -101,7 +101,7 @@ fun PinPad(
     val pinDotFilledColor = accentColor
     val keypadButtonShape = androidx.compose.foundation.shape.CircleShape
     val keypadDotShape = androidx.compose.foundation.shape.CircleShape
-    val keypadFontFamily = androidx.compose.ui.text.font.FontFamily.Default
+    val keypadFontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
 
     val isGlass = liquidGlassLook != "None"
 
@@ -117,7 +117,7 @@ fun PinPad(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .padding(bottom = 32.dp)
+                .padding(bottom = 24.dp)
                 .graphicsLayer { translationX = shakeOffset.value }
                 .testTag("pin_dots_container")
         ) {
@@ -139,7 +139,7 @@ fun PinPad(
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 6.dp)
-                        .size(12.dp)
+                        .size(10.dp)
                         .graphicsLayer {
                             scaleX = dotScale
                             scaleY = dotScale
@@ -155,7 +155,7 @@ fun PinPad(
             }
         }
 
-        // Layout numeric grid (0-9 buttons, circular, 72dp size)
+        // Layout numeric grid (0-9 buttons, circular, 64dp size)
         val numKeys = listOf(
             listOf("1", "2", "3"),
             listOf("4", "5", "6"),
@@ -164,17 +164,17 @@ fun PinPad(
         )
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             numKeys.forEach { rowKeys ->
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     rowKeys.forEach { key ->
                         if (key.isEmpty()) {
-                            Spacer(modifier = Modifier.size(74.dp))
+                            Spacer(modifier = Modifier.size(68.dp))
                         } else {
                             PremiumKeyButton(
                                 key = key,
@@ -183,6 +183,7 @@ fun PinPad(
                                 fontSize = pinFontSize.toFloat(),
                                 isDark = isDark,
                                 accentColor = accentColor,
+                                fontFamily = keypadFontFamily,
                                 onTap = {
                                     if (isWrong) return@PremiumKeyButton
                                     playClickVibration()
@@ -245,6 +246,7 @@ fun PremiumKeyButton(
     fontSize: Float,
     isDark: Boolean,
     accentColor: Color,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
     onTap: () -> Unit
 ) {
     val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -274,7 +276,7 @@ fun PremiumKeyButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(74.dp)
+            .size(68.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -292,7 +294,7 @@ fun PremiumKeyButton(
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(70.dp)
+                .size(64.dp)
                 .clip(CircleShape)
                 .background(buttonBg)
                 .border(1.dp, borderCol, CircleShape)
@@ -302,14 +304,15 @@ fun PremiumKeyButton(
                     imageVector = Icons.Default.Backspace,
                     contentDescription = "Backspace Button",
                     tint = fontColor,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             } else {
                 Text(
                     text = key,
                     fontSize = fontSize.sp,
                     fontWeight = FontWeight.Bold,
-                    color = fontColor
+                    color = fontColor,
+                    fontFamily = fontFamily
                 )
             }
         }

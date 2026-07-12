@@ -361,10 +361,6 @@ fun LockScreen(
                 "24-Hour Digital" -> {
                     currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(calendar)
                 }
-                "Two-Line Stacked" -> {
-                    currentTime = SimpleDateFormat("HH", Locale.getDefault()).format(calendar)
-                    currentMinutes = SimpleDateFormat("mm", Locale.getDefault()).format(calendar)
-                }
                 "Retro Minimalist hh.mm" -> {
                     currentTime = SimpleDateFormat("hh.mm", Locale.getDefault()).format(calendar)
                 }
@@ -422,10 +418,13 @@ fun LockScreen(
             }
         } else {
             val list = mutableListOf<LockMethod>()
+            val isSingleBiometric = encryptedPrefs.isSingleBiometricEnabled()
             if (configuredLockMethod != LockMethod.DEFAULT) {
                 // If a specific lock type is selected, only show that
                 list.add(configuredLockMethod)
-                list.add(LockMethod.BIOMETRIC)
+                if (isSingleBiometric) {
+                    list.add(LockMethod.BIOMETRIC)
+                }
             } else {
                 // Default: show all standard ones that are set up
                 if (pinHash != null) list.add(LockMethod.PIN)
@@ -515,10 +514,11 @@ fun LockScreen(
     }
 
     androidx.compose.runtime.CompositionLocalProvider(com.example.ui.theme.LocalAccentColor provides accentColor) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(bgGradient)
+        ProvideTextStyle(value = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)) {
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(bgGradient)
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
@@ -553,32 +553,7 @@ fun LockScreen(
                      modifier = Modifier.padding(top = 16.dp)
                  ) {
                      val baseClockColor = clockColor.copy(alpha = dynamicClockAlpha)
-                     if (clockStyle == "Two-Line Stacked") {
-                          Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                              Text(
-                                  text = formatClockText(currentTime, clockWeight),
-                                  fontSize = (clockFontSize * 1.3f).sp,
-                                  fontFamily = dynamicClockFontFamily,
-                                  fontWeight = FontWeight.Black,
-                                  color = baseClockColor,
-                                  fontStyle = dynamicClockFontStyle,
-                                  lineHeight = (clockFontSize * 1f).sp,
-                                  letterSpacing = (-2).sp,
-                                  modifier = Modifier.testTag("lock_time_display_stacked_hour")
-                              )
-                              Text(
-                                  text = formatClockText(currentMinutes, clockWeight),
-                                  fontSize = (clockFontSize * 1.3f).sp,
-                                  fontFamily = dynamicClockFontFamily,
-                                  fontWeight = FontWeight.Black,
-                                  color = baseClockColor,
-                                  fontStyle = dynamicClockFontStyle,
-                                  lineHeight = (clockFontSize * 1f).sp,
-                                  letterSpacing = (-2).sp,
-                                  modifier = Modifier.testTag("lock_time_display_stacked_min")
-                              )
-                          }
-                     } else if (clockStyle == "Seconds Accent") {
+                     if (clockStyle == "Seconds Accent") {
                           Row(
                               verticalAlignment = Alignment.Bottom,
                               horizontalArrangement = Arrangement.Center
@@ -619,7 +594,7 @@ fun LockScreen(
                      Text(
                           text = currentDate,
                           fontSize = 15.sp,
-                          fontFamily = dynamicClockFontFamily,
+                          fontFamily = androidx.compose.ui.text.font.FontFamily.Default,
                           fontWeight = FontWeight.Medium,
                           color = baseClockColor.copy(alpha = 0.7f * dynamicClockAlpha),
                           modifier = Modifier.testTag("lock_date_display")
@@ -683,27 +658,7 @@ fun LockScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = resolvedSecuredTextColor,
-                            modifier = Modifier.size(11.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (actionKeyword.isNullOrEmpty()) "SECURED PASSCODE DETECTED" else "LOCKED ACTION BLOCKED",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = resolvedSecuredTextColor,
-                            letterSpacing = 1.sp
-                        )
-                    }
 
                     // Smooth, gpu-friendly right-to-left step progress indicator
                     if (isMultiLock && availableMethods.size > 1) {
@@ -936,6 +891,7 @@ fun LockScreen(
             if (clockPosition == "Bottom") {
                 clockBlock()
             }
+        }
         }
     }
 

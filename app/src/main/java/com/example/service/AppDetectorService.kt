@@ -227,7 +227,6 @@ class AppDetectorService : Service() {
             .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setCategory(Notification.CATEGORY_SERVICE)
-            .setOngoing(true)
             .setContentIntent(pendingIntent)
             .build()
     }

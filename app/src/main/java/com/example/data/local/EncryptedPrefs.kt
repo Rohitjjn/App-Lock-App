@@ -148,7 +148,10 @@ class EncryptedPrefs(private val context: Context) {
     fun getLockClockStyle(): String = prefs.getString("lock_clock_style", "Default") ?: "Default"
     fun saveLockClockStyle(style: String) = prefs.edit().putString("lock_clock_style", style).apply()
 
-    fun getLockClockFont(): String = prefs.getString("lock_clock_font", "System") ?: "System"
+    fun getLockClockFont(): String {
+        val saved = prefs.getString("lock_clock_font", "Elegant Serif") ?: "Elegant Serif"
+        return if (saved == "System" || saved == "Handwritten") "Elegant Serif" else saved
+    }
     fun saveLockClockFont(font: String) = prefs.edit().putString("lock_clock_font", font).apply()
 
     fun getLockClockSize(): String = prefs.getString("lock_clock_size", "Standard") ?: "Standard"
@@ -402,6 +405,9 @@ class EncryptedPrefs(private val context: Context) {
 
     fun isAppLaunchBiometricEnabled(): Boolean = prefs.getBoolean(KEY_APP_LAUNCH_BIOMETRIC_ENABLED, false)
     fun setAppLaunchBiometricEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_APP_LAUNCH_BIOMETRIC_ENABLED, enabled).apply()
+
+    fun isSingleBiometricEnabled(): Boolean = prefs.getBoolean("single_biometric_enabled", true)
+    fun setSingleBiometricEnabled(enabled: Boolean) = prefs.edit().putBoolean("single_biometric_enabled", enabled).apply()
 
     fun isBiometricAutoPromptEnabled(): Boolean = prefs.getBoolean("biometric_auto_prompt", true)
     fun setBiometricAutoPromptEnabled(enabled: Boolean) = prefs.edit().putBoolean("biometric_auto_prompt", enabled).apply()

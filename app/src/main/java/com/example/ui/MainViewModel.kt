@@ -58,6 +58,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isMultiLockEnabled = MutableStateFlow(encryptedPrefs.isMultiLockEnabled())
     val multiLockSequence = MutableStateFlow(encryptedPrefs.getMultiLockSequence())
     val isAppLaunchBiometricEnabled = MutableStateFlow(encryptedPrefs.isAppLaunchBiometricEnabled())
+    val isSingleBiometricEnabled = MutableStateFlow(encryptedPrefs.isSingleBiometricEnabled())
     val biometricAutoPromptEnabled = MutableStateFlow(encryptedPrefs.isBiometricAutoPromptEnabled())
 
     // Custom lock screen customisation flows
@@ -69,6 +70,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val lockBackgroundTheme = MutableStateFlow(encryptedPrefs.getLockBackgroundTheme())
     val lockLiquidGlassLook = MutableStateFlow(encryptedPrefs.getLockLiquidGlassLook())
     val lockButtonShape = MutableStateFlow(encryptedPrefs.getLockButtonShape())
+
+    fun updateSingleBiometricEnabled(enabled: Boolean) {
+        isSingleBiometricEnabled.value = enabled
+        encryptedPrefs.setSingleBiometricEnabled(enabled)
+    }
 
     fun updateAppLaunchBiometricEnabled(enabled: Boolean) {
         isAppLaunchBiometricEnabled.value = enabled
