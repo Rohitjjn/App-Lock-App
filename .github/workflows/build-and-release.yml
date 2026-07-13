@@ -26,26 +26,30 @@ jobs:
         with:
           gradle-version: 9.3.1
 
-      - name: Generate Debug Keystore
-        run: keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
+      - name: Generate Release Keystore
+        run: keytool -genkey -v -keystore my-upload-key.jks -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Release"
 
       - name: Create .env file
         run: touch .env
 
-      - name: Build Debug APKs
-        run: gradle assembleDebug
+      - name: Build Release APKs
+        run: gradle assembleRelease
+        env:
+          KEYSTORE_PATH: my-upload-key.jks
+          STORE_PASSWORD: android
+          KEY_PASSWORD: android
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Debug-APKs
-          path: app/build/outputs/apk/debug/*.apk
+          name: Release-APKs
+          path: app/build/outputs/apk/release/*.apk
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/debug/*.apk
+          files: app/build/outputs/apk/release/*.apk
           name: Release ${{ github.ref_name }}
           body: "New update available!"
         env:
