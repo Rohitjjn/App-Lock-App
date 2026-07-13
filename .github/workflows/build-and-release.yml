@@ -35,7 +35,7 @@ jobs:
       - name: Build Release APKs
         run: gradle assembleRelease
         env:
-          KEYSTORE_PATH: my-upload-key.jks
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
           STORE_PASSWORD: android
           KEY_PASSWORD: android
 
