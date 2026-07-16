@@ -46,11 +46,14 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/release/*.apk
-          name: Release ${{ github.ref_name }}
-          body: "New update available!"
+          name: ${{ github.ref_name || 'Manual Build' }}
+          tag_name: ${{ github.ref_name || 'v1.0.0-manual' }}
+          body: "New update available! Please download the release APK below to get the latest features and security updates."
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

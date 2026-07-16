@@ -14,15 +14,14 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object AutoUpdater {
-    // TODO: Replace with your actual GitHub username and repository name to enable auto-updates
-    // For example: "paionorr/safelock"
-    private const val GITHUB_REPO = "YOUR_GITHUB_USERNAME/YOUR_REPO_NAME"
+    // GitHub username and repository name to enable auto-updates
+    private const val GITHUB_REPO = "Rohitjjn/App-Lock-App"
     private const val API_URL = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
     
     data class UpdateInfo(val version: String, val downloadUrl: String, val releaseNotes: String)
 
     suspend fun checkForUpdate(currentVersion: String): UpdateInfo? = withContext(Dispatchers.IO) {
-        if (GITHUB_REPO == "YOUR_GITHUB_USERNAME/YOUR_REPO_NAME") return@withContext null
+        if (GITHUB_REPO == "YOUR_GITHUB_USERNAME/YOUR_REPO_NAME" || GITHUB_REPO.isEmpty()) return@withContext null
         
         try {
             val connection = URL(API_URL).openConnection() as HttpURLConnection
