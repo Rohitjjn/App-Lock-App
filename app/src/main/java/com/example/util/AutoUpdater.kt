@@ -5,106 +5,116 @@ import android.content.Intent
 import android.os.Environment
 import android.util.Log
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
-import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
 object AutoUpdater {
-    // GitHub username and repository name to enable auto-updates
     private const val GITHUB_REPO = "Rohitjjn/App-Lock-App"
     private const val API_URL = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
-    
+
     data class UpdateInfo(val version: String, val downloadUrl: String, val releaseNotes: String)
 
-    suspend fun checkForUpdate(currentVersion: String): UpdateInfo? = withContext(Dispatchers.IO) {
-        if (GITHUB_REPO == "YOUR_GITHUB_USERNAME/YOUR_REPO_NAME" || GITHUB_REPO.isEmpty()) return@withContext null
-        
-        try {
-            val connection = URL(API_URL).openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-            
-            if (connection.responseCode == 200) {
-                val response = connection.inputStream.bufferedReader().readText()
-                val json = JSONObject(response)
-                val tagName = json.getString("tag_name") // e.g., "v1.0.1"
-                
-                val cleanLatest = tagName.removePrefix("v")
-                val cleanCurrent = currentVersion.removePrefix("v")
-                
-                // Extremely simple version string mismatch check. 
-                // For proper semantic versioning you'd parse components.
-                if (cleanLatest != cleanCurrent && cleanLatest.isNotEmpty()) {
-                    val assets = json.getJSONArray("assets")
-                    if (assets.length() > 0) {
-                        var downloadUrl = ""
-                        for (i in 0 until assets.length()) {
-                            val url = assets.getJSONObject(i).getString("browser_download_url")
-                            if (url.contains("universal", ignoreCase = true)) {
-                                downloadUrl = url
-                                break
-                            }
-                        }
-                        // Fallback to the first asset if universal is not found
-                        if (downloadUrl.isEmpty()) {
-                            downloadUrl = assets.getJSONObject(0).getString("browser_download_url")
-                        }
-                        
-                        val body = json.optString("body", "New update available for SafeLock!")
-                        return@withContext UpdateInfo(tagName, downloadUrl, body)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("AutoUpdater", "Failed to check for update: ${e.message}", e)
+    private fun openConnection(url: String): HttpURLConnection {
+        require(URL(url).protocol == "https") { "Updates require HTTPS" }
+        return (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            requestMethod = "GET"
         }
-        return@withContext null
     }
 
-    suspend fun downloadAndInstall(context: Context, downloadUrl: String, onProgress: (Int) -> Unit) = withContext(Dispatchers.IO) {
+    suspend fun checkForUpdate(currentVersion: String): UpdateInfo? = withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
         try {
-            val connection = URL(downloadUrl).openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connect()
-            
-            val fileLength = connection.contentLength
+            connection = openConnection(API_URL)
+            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) return@withContext null
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            currentCoroutineContext().ensureActive()
+            val json = JSONObject(response)
+            val tagName = json.getString("tag_name")
+            if (!ReleaseVersion.isNewer(tagName, currentVersion)) return@withContext null
+
+            val assets = json.getJSONArray("assets")
+            val apkUrls = (0 until assets.length()).map {
+                assets.getJSONObject(it).getString("browser_download_url")
+            }.filter { it.endsWith(".apk", ignoreCase = true) }
+            val downloadUrl = apkUrls.firstOrNull { it.contains("universal", ignoreCase = true) }
+                ?: apkUrls.firstOrNull() ?: return@withContext null
+            UpdateInfo(tagName, downloadUrl, json.optString("body", "New update available for SafeLock!"))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            Log.w("AutoUpdater", "Unable to check for updates")
+            null
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    /** True means the installer was opened, not that Android completed installation. */
+    suspend fun downloadAndInstall(
+        context: Context,
+        downloadUrl: String,
+        onProgress: (Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
+        var partialFile: File? = null
+        try {
             val downloadDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            if (downloadDir != null && !downloadDir.exists()) {
-                downloadDir.mkdirs()
-            }
-            
+                ?: error("Download storage is unavailable")
+            check(downloadDir.isDirectory || downloadDir.mkdirs())
             val outputFile = File(downloadDir, "safelock_update.apk")
-            if (outputFile.exists()) {
-                outputFile.delete()
-            }
-            
-            val input = connection.inputStream
-            val output = FileOutputStream(outputFile)
-            
-            val data = ByteArray(4096)
-            var total: Long = 0
-            var count: Int
-            
-            while (input.read(data).also { count = it } != -1) {
-                total += count.toLong()
-                if (fileLength > 0) {
-                    withContext(Dispatchers.Main) {
-                        onProgress((total * 100 / fileLength).toInt())
+            val partial = File(downloadDir, "safelock_update.apk.part")
+            partialFile = partial
+            connection = openConnection(downloadUrl)
+            check(connection.responseCode == HttpURLConnection.HTTP_OK)
+            val fileLength = connection.contentLengthLong
+            var total = 0L
+            var lastProgress = -1
+            connection.inputStream.use { input ->
+                partial.outputStream().use { output ->
+                    val data = ByteArray(8192)
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val count = input.read(data)
+                        if (count == -1) break
+                        output.write(data, 0, count)
+                        total += count
+                        if (fileLength > 0) {
+                            val progress = ((total * 100) / fileLength).coerceIn(0, 100).toInt()
+                            if (progress != lastProgress) {
+                                lastProgress = progress
+                                withContext(Dispatchers.Main) { onProgress(progress) }
+                            }
+                        }
                     }
                 }
-                output.write(data, 0, count)
             }
-            output.flush()
-            output.close()
-            input.close()
-            
-            installApk(context, outputFile)
-        } catch (e: Exception) {
-            Log.e("AutoUpdater", "Failed to download update: ${e.message}", e)
+            check(total > 0 && (fileLength < 0 || total == fileLength)) { "Incomplete download" }
+            currentCoroutineContext().ensureActive()
+            check(!outputFile.exists() || outputFile.delete())
+            check(partial.renameTo(outputFile))
+            withContext(Dispatchers.Main) {
+                onProgress(100)
+                installApk(context, outputFile)
+            }
+            true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            Log.w("AutoUpdater", "Unable to download or open update")
+            false
+        } finally {
+            partialFile?.delete()
+            connection?.disconnect()
         }
     }
 
@@ -112,8 +122,7 @@ object AutoUpdater {
         val intent = Intent(Intent.ACTION_VIEW)
         val apkUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apkFile)
         intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }
 }

@@ -2,4 +2,21 @@
     <string name="app_name">App Lock</string>
     <string name="accessibility_description">Monitors offline app launches to display secure lock screens and protect user apps on this device.</string>
     <string name="admin_receiver_description">Prevents unauthorized users from uninstalling or deleting SafeLock app lock protection from your device.</string>
+    <string name="refresh_apps">Refresh apps</string>
+    <string name="retry">Try again</string>
+    <string name="clear_search">Clear search</string>
+    <string name="show_all_apps">Show all apps</string>
+    <string name="app_list_error_title">Could not load apps</string>
+    <string name="app_list_error_description">Your saved locks have not changed. Try refreshing the app list.</string>
+    <string name="app_list_no_results">No matching apps</string>
+    <string name="app_list_no_locks">No apps locked yet</string>
+    <string name="app_list_no_apps">No apps available</string>
+    <string name="app_list_search_hint">Try another app name or clear your search.</string>
+    <string name="app_list_lock_hint">Open All apps and turn on protection for an app.</string>
+    <string name="app_list_refresh_hint">Refresh to check for newly installed apps.</string>
+    <plurals name="locked_app_count">
+        <item quantity="one">%d locked app</item>
+        <item quantity="other">%d locked apps</item>
+    </plurals>
+    <string name="update_failed">Could not download or open the update. Check your connection and available storage, then try again.</string>
 </resources>

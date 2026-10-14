@@ -12,6 +12,7 @@ import android.os.VibratorManager
 import android.service.quicksettings.TileService
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
@@ -69,11 +70,12 @@ class LockActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // FLAG_SECURE removed to allow screenshots during development and testing as requested by user
-        // window.setFlags(
-        //     android.view.WindowManager.LayoutParams.FLAG_SECURE,
-        //     android.view.WindowManager.LayoutParams.FLAG_SECURE
-        // )
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleUnlockCancel(byBackPress = true)
+            }
+        })
 
         // 1. Prevent split-screen / multi-window bypass lock bypass vectors
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -246,11 +248,6 @@ class LockActivity : FragmentActivity() {
         
         finish()
         overridePendingTransition(0, 0)
-    }
-
-    override fun onBackPressed() {
-        // Instead of letting them back into the app, redirect to home/perform back closure
-        handleUnlockCancel(byBackPress = true)
     }
 
     private fun triggerVibration() {

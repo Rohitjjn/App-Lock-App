@@ -13,6 +13,8 @@ import com.example.data.model.LockedApp
 import com.example.data.model.SecurityQuestion
 import com.example.data.repository.AppLockRepository
 import com.example.util.HashUtil
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -40,6 +42,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _installedApps = MutableStateFlow<List<AppItem>>(emptyList())
     private val _isLoading = MutableStateFlow(true)
     val isLoading = _isLoading.asStateFlow()
+    private val _loadError = MutableStateFlow(false)
+    val loadError = _loadError.asStateFlow()
+    private var loadJob: Job? = null
 
     // Search and Sort options
     val searchQuery = MutableStateFlow("")
@@ -91,20 +96,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val securityQuestion: StateFlow<SecurityQuestion?> = repository.getSecurityQuestion()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // Flow combining everything to display the reactive app list
-    val appItems: StateFlow<List<AppItem>> = combine(
-        _installedApps,
-        repository.getAllLockedApps(),
-        searchQuery,
-        sortOption
-    ) { installed, lockedList, query, sort ->
-        val lockedPackages = lockedList.associateBy { it.packageName }
-        
-        val mappedList = installed.map { appItem ->
-            val isLocked = lockedPackages[appItem.packageName]?.isLocked == true
-            appItem.copy(isLocked = isLocked)
-        }
+    private val allAppItems: StateFlow<List<AppItem>> = combine(
+        _installedApps, repository.getAllLockedApps()
+    ) { installed, lockedList ->
+        val lockedPackages = lockedList.filter { it.isLocked }.map { it.packageName }.toSet()
+        installed.map { it.copy(isLocked = it.packageName in lockedPackages) }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val lockedAppCount: StateFlow<Int> = allAppItems.map { items -> items.count { it.isLocked } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val appItems: StateFlow<List<AppItem>> = combine(
+        allAppItems, searchQuery, sortOption
+    ) { mappedList, query, sort ->
         // Apply filters
         val filtered = if (query.isBlank()) {
             mappedList
@@ -124,12 +129,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        loadInstalledLauncherApps()
+        refreshInstalledApps()
     }
 
-    private fun loadInstalledLauncherApps() {
-        viewModelScope.launch(Dispatchers.IO) {
+    fun refreshInstalledApps() {
+        if (loadJob?.isActive == true) return
+        loadJob = viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
+            _loadError.value = false
             val context = getApplication<Application>()
             val pm = context.packageManager
             val seen = mutableSetOf<String>()
@@ -186,29 +193,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val label = packageInfo.applicationInfo?.loadLabel(pm)?.toString() ?: packageName
                     list.add(AppItem(packageName, label, isLocked = false))
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+                _installedApps.value = list
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Keep the previous successful result and all persisted locks untouched.
+                _loadError.value = true
+            } finally {
+                _isLoading.value = false
             }
-
-            // Warm the icons concurrently in parallel via a supervisorScope FIRST so they are 100% cached
-            try {
-                kotlinx.coroutines.supervisorScope {
-                    list.map { item ->
-                        launch(Dispatchers.IO) {
-                            try {
-                                com.example.ui.AppIconCache.getIcon(context, item.packageName)
-                            } catch (e: Exception) {
-                                // ignore
-                            }
-                        }
-                    }.forEach { it.join() }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            _installedApps.value = list
-            _isLoading.value = false
         }
     }
 

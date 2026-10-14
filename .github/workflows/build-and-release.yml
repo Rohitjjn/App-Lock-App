@@ -2,58 +2,82 @@ name: Build and Release APK
 
 on:
   push:
-    tags:
-      - 'v*' # Trigger on version tags, e.g. v1.0.0
-  workflow_dispatch: # Allows manual triggering from the GitHub Actions tab
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing version tag to release (for example v2.0.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: Build APK
-    runs-on: ubuntu-latest
-
+    name: Verify and sign release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
-      - name: Checkout Code
+      - name: Checkout release tag
         uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          fetch-depth: 0
+      - name: Validate release tag
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'temurin'
-          
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 9.3.1
-
-      - name: Generate Release Keystore
-        run: keytool -genkey -v -keystore my-upload-key.jks -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Release"
-
-      - name: Create .env file
-        run: touch .env
-
-      - name: Build Release APKs
-        run: gradle assembleRelease
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Ensure compile SDK from hosted runner
+        run: |
+          if [[ ! -d "$ANDROID_HOME/platforms/android-36.1" || ! -d "$ANDROID_HOME/build-tools/36.0.0" ]]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36.1' 'build-tools;36.0.0'
+          fi
+      - name: Verify before signing
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug
+      - name: Restore existing release key
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
-          STORE_PASSWORD: android
-          KEY_PASSWORD: android
-
-      - name: Upload APK Artifacts
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$KEYSTORE_BASE64" || -z "$STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
+            echo 'Configure the existing release signing key and password secrets. A new key will NOT be generated.'
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+      - name: Build signed release APKs
+        run: ./gradlew :app:assembleRelease
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'upload' }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      - name: Remove temporary key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Release-APKs
           path: app/build/outputs/apk/release/*.apk
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+          if-no-files-found: error
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/release/*.apk
-          name: ${{ github.ref_name || 'Manual Build' }}
-          tag_name: ${{ github.ref_name || 'v1.0.0-manual' }}
-          body: "New update available! Please download the release APK below to get the latest features and security updates."
+          name: ${{ env.RELEASE_TAG }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          body: Download the APK matching your device, or choose the universal APK.
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -7,6 +7,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.border
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Search
@@ -24,6 +26,15 @@ import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.example.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,11 +67,12 @@ fun AppListScreen(
     val appItems by viewModel.appItems.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
-    // Sub-filter to toggle between all apps and locked-only view
-    var showLockedOnly by remember { mutableStateOf(false) }
+    val loadError by viewModel.loadError.collectAsStateWithLifecycle()
+    val lockedCount by viewModel.lockedAppCount.collectAsStateWithLifecycle()
 
-    // Aggregate statistics
-    val lockedCount = remember(appItems) { appItems.count { it.isLocked } }
+    // Sub-filter to toggle between all apps and locked-only view
+    var showLockedOnly by rememberSaveable { mutableStateOf(false) }
+
     
     val displayedItems = remember(appItems, showLockedOnly) {
         if (showLockedOnly) appItems.filter { it.isLocked } else appItems
@@ -86,6 +98,13 @@ fun AppListScreen(
                     containerColor = MaterialTheme.colorScheme.background
                 ),
                 actions = {
+                    IconButton(
+                        onClick = viewModel::refreshInstalledApps,
+                        enabled = !isLoading,
+                        modifier = Modifier.testTag("refresh_apps_button")
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh_apps))
+                    }
                     // Sorting selector button
                     var showDropdown by remember { mutableStateOf(false) }
                     Box(modifier = Modifier.padding(end = 12.dp)) {
@@ -109,7 +128,7 @@ fun AppListScreen(
                                 .background(MaterialTheme.colorScheme.surface)
                                 .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(8.dp))
                         ) {
-                            val isAlphaSelected = viewModel.sortOption.value == SortOption.ALPHABETICAL
+                            val isAlphaSelected = sortOption == SortOption.ALPHABETICAL
                             DropdownMenuItem(
                                 leadingIcon = {
                                     Icon(
@@ -144,7 +163,7 @@ fun AppListScreen(
                                 modifier = Modifier.testTag("sort_alphabetical")
                             )
 
-                            val isLockedSelected = viewModel.sortOption.value == SortOption.LOCKED_FIRST
+                            val isLockedSelected = sortOption == SortOption.LOCKED_FIRST
                             DropdownMenuItem(
                                 leadingIcon = {
                                     Icon(
@@ -269,7 +288,7 @@ fun AppListScreen(
                     modifier = Modifier.testTag("locked_stats_indicator")
                 ) {
                     Text(
-                        text = "$lockedCount Locked",
+                        text = pluralStringResource(R.plurals.locked_app_count, lockedCount, lockedCount),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -296,22 +315,20 @@ fun AppListScreen(
                             ShimmerAppRow()
                         }
                     }
-                } else if (displayedItems.isEmpty()) {
-                    val emptyTitle = if (showLockedOnly) {
-                        "No apps locked"
-                    } else if (searchQuery.isNotEmpty()) {
-                        "No search results"
-                    } else {
-                        "No packages found"
-                    }
+                } else if (loadError || displayedItems.isEmpty()) {
+                    val emptyTitle = stringResource(when {
+                        loadError -> R.string.app_list_error_title
+                        searchQuery.isNotBlank() -> R.string.app_list_no_results
+                        showLockedOnly -> R.string.app_list_no_locks
+                        else -> R.string.app_list_no_apps
+                    })
 
-                    val emptyDesc = if (showLockedOnly) {
-                        "Toggle packages in the list to secure them with biometric, PIN, or pattern authentication protocols."
-                    } else if (searchQuery.isNotEmpty()) {
-                        "Double-check spelling or filter mode configurations."
-                    } else {
-                        "Waiting for terminal package manager query..."
-                    }
+                    val emptyDesc = stringResource(when {
+                        loadError -> R.string.app_list_error_description
+                        searchQuery.isNotBlank() -> R.string.app_list_search_hint
+                        showLockedOnly -> R.string.app_list_lock_hint
+                        else -> R.string.app_list_refresh_hint
+                    })
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -355,6 +372,22 @@ fun AppListScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 24.dp)
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextButton(onClick = {
+                            when {
+                                loadError -> viewModel.refreshInstalledApps()
+                                searchQuery.isNotBlank() -> viewModel.searchQuery.value = ""
+                                showLockedOnly -> showLockedOnly = false
+                                else -> viewModel.refreshInstalledApps()
+                            }
+                        }, modifier = Modifier.testTag("app_list_empty_action")) {
+                            Text(stringResource(when {
+                                loadError -> R.string.retry
+                                searchQuery.isNotBlank() -> R.string.clear_search
+                                showLockedOnly -> R.string.show_all_apps
+                                else -> R.string.refresh_apps
+                            }))
+                        }
                     }
                 } else {
                     LazyColumn(
@@ -391,11 +424,6 @@ fun AppRowItem(
     onLockToggled: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val onRowClick = remember(onLockToggled, item.isLocked) {
-        {
-            onLockToggled(!item.isLocked)
-        }
-    }
 
     Card(
         shape = RoundedCornerShape(8.dp),
@@ -406,7 +434,7 @@ fun AppRowItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable(onClick = onRowClick)
+            .toggleable(value = item.isLocked, role = Role.Switch, onValueChange = onLockToggled)
             .testTag("app_item_${item.packageName}")
     ) {
         Row(
@@ -415,13 +443,17 @@ fun AppRowItem(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Retrieve fully warmed icon instantly from O(1) in-memory cache to guarantee zero-allocation scroll smoothness
-            val bitmap = remember(item.packageName) { AppIconCache.getIconFromCache(item.packageName) }
+            // Load only visible rows off the UI thread; the bounded cache avoids retaining every installed icon.
+            val context = LocalContext.current.applicationContext
+            val bitmapState = produceState(AppIconCache.getIconFromCache(item.packageName), item.packageName) {
+                value = withContext(Dispatchers.IO) { AppIconCache.getIcon(context, item.packageName) }
+            }
+            val bitmap = bitmapState.value
 
             if (bitmap != null) {
                 Image(
                     bitmap = bitmap,
-                    contentDescription = "Icon of ${item.name}",
+                    contentDescription = null,
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(10.dp))
@@ -454,14 +486,14 @@ fun AppRowItem(
                 )
                 Text(
                     text = item.packageName,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Switch(
                 checked = item.isLocked,
-                onCheckedChange = { onLockToggled(it) },
+                onCheckedChange = null,
                 thumbContent = {
                     Icon(
                         imageVector = if (item.isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
@@ -475,7 +507,7 @@ fun AppRowItem(
                     uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
-                modifier = Modifier.testTag("app_switch_${item.packageName}")
+                modifier = Modifier.clearAndSetSemantics { }.testTag("app_switch_${item.packageName}")
             )
         }
     }
@@ -566,14 +598,14 @@ private fun getSafeImageBitmap(drawable: android.graphics.drawable.Drawable): an
 }
 
 object AppIconCache {
-    private val cache = java.util.concurrent.ConcurrentHashMap<String, androidx.compose.ui.graphics.ImageBitmap>()
+    private val cache = android.util.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(128)
 
     fun getIconFromCache(packageName: String): androidx.compose.ui.graphics.ImageBitmap? {
-        return cache[packageName]
+        return cache.get(packageName)
     }
 
     fun getIcon(context: android.content.Context, packageName: String): androidx.compose.ui.graphics.ImageBitmap? {
-        val cached = cache[packageName]
+        val cached = cache.get(packageName)
         if (cached != null) return cached
 
         return try {
@@ -587,7 +619,7 @@ object AppIconCache {
             drawable.setBounds(0, 0, canvas.width, canvas.height)
             drawable.draw(canvas)
             val imageBitmap = bitmap.asImageBitmap()
-            cache[packageName] = imageBitmap
+            cache.put(packageName, imageBitmap)
             imageBitmap
         } catch (e: Exception) {
             null

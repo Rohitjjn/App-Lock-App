@@ -51,6 +51,8 @@ private val LightColorScheme =
     onPrimaryContainer = XaiBlack
   )
 
+val LocalDarkTheme = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 val LocalAccentColor = androidx.compose.runtime.staticCompositionLocalOf { Color.Black }
 
 @Composable
@@ -109,7 +111,10 @@ fun MyApplicationTheme(
     }
   }
 
-  androidx.compose.runtime.CompositionLocalProvider(LocalAccentColor provides resolvedAccent) {
+  androidx.compose.runtime.CompositionLocalProvider(
+      LocalAccentColor provides resolvedAccent,
+      LocalDarkTheme provides darkTheme
+  ) {
       MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
   }
 }

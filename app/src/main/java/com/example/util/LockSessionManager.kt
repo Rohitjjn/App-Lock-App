@@ -22,21 +22,20 @@ object LockSessionManager {
     private val pendingLaunches = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     // Thread-safe memory cache of user's locked package names for instant main thread lookup
-    private val lockedPackagesCache = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val lockedPackagesCache = LockedPackageCache()
 
     /**
      * Updates the local memory cache of user-secured package names.
      */
     fun updateLockedPackagesCache(packageNames: Set<String>) {
-        lockedPackagesCache.clear()
-        lockedPackagesCache.addAll(packageNames)
+        lockedPackagesCache.replace(packageNames)
     }
 
     /**
      * Retrieves the current internal cache of locked package names
      */
     fun getLockedPackageNamesFromCache(context: android.content.Context): Set<String> {
-        return lockedPackagesCache
+        return lockedPackagesCache.snapshot()
     }
 
     /**
@@ -88,7 +87,7 @@ object LockSessionManager {
         }
 
         // Only for "Lock When Exit" WITH "Immediate Lockout (0L)", we clear aggressively!
-        if (packageName == "com.aistudio.applock.vqpstz" || packageName.startsWith("com.example.") || isLauncherPackage(packageName, context)) {
+        if (packageName == com.example.BuildConfig.APPLICATION_ID || isLauncherPackage(packageName, context)) {
             synchronized(unlockedPackages) {
                 unlockedPackages.clear()
             }
@@ -126,7 +125,7 @@ object LockSessionManager {
      * Mark an app as temporary unlocked.
      */
     fun setAppUnlocked(packageName: String) {
-        val now = System.currentTimeMillis()
+        val now = android.os.SystemClock.elapsedRealtime()
         synchronized(unlockedPackages) {
             unlockedPackages[packageName] = now
         }
@@ -141,7 +140,7 @@ object LockSessionManager {
      */
     fun isAppLocked(packageName: String, timeoutMs: Long): Boolean {
         // 1. Do not lock the App Lock application itself
-        if (packageName == "com.aistudio.applock.vqpstz" || packageName.startsWith("com.example.")) {
+        if (packageName == com.example.BuildConfig.APPLICATION_ID) {
             return false
         }
 
@@ -152,7 +151,7 @@ object LockSessionManager {
 
         if (unlockTime != null) {
             // Check if timeout has expired (only if timeoutMs > 0)
-            if (timeoutMs > 0L && (System.currentTimeMillis() - unlockTime > timeoutMs)) {
+            if (timeoutMs > 0L && (android.os.SystemClock.elapsedRealtime() - unlockTime > timeoutMs)) {
                 synchronized(unlockedPackages) {
                     unlockedPackages.remove(packageName)
                 }

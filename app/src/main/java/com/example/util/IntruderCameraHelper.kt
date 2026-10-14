@@ -16,23 +16,31 @@ import java.util.Locale
 object IntruderCameraHelper {
     private const val TAG = "IntruderCameraHelper"
 
+    private var requestGeneration = 0
+
     private var imageCapture: ImageCapture? = null
     private var isCameraReady = false
     private var currentCameraProvider: ProcessCameraProvider? = null
 
-    fun prepareCamera(context: Context, lifecycleOwner: LifecycleOwner) {
-        val hasCameraPerm = ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.CAMERA
+    private fun isCaptureAllowed(context: Context): Boolean {
+        val prefs = (context.applicationContext as? com.example.AppLockApplication)?.encryptedPrefs
+        return prefs?.isIntruderSelfieEnabled() == true && ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.CAMERA
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
 
-        if (!hasCameraPerm) {
-            Log.e(TAG, "Camera permission not granted")
-            return
-        }
+    fun prepareCamera(context: Context, lifecycleOwner: LifecycleOwner) {
+        releaseCamera()
+        if (!isCaptureAllowed(context)) return
+        val generation = requestGeneration
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
+            // A late provider callback must not re-bind after leaving the lock screen.
+            if (generation != requestGeneration || !isCaptureAllowed(context) ||
+                !lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                return@addListener
+            }
             try {
                 val cameraProvider = cameraProviderFuture.get()
                 currentCameraProvider = cameraProvider
@@ -59,6 +67,10 @@ object IntruderCameraHelper {
     }
 
     fun takeSelfieAndClose(context: Context) {
+        if (!isCaptureAllowed(context)) {
+            releaseCamera()
+            return
+        }
         if (!isCameraReady || imageCapture == null) {
             Log.e(TAG, "Camera not ready for fast capture")
             return
@@ -79,7 +91,7 @@ object IntruderCameraHelper {
             ContextCompat.getMainExecutor(context),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    Log.d(TAG, "Background selfie saved successfully at: ${selfieFile.absolutePath}")
+                    Log.d(TAG, "Intruder photo saved locally")
                     releaseCamera()
                 }
 
@@ -92,6 +104,7 @@ object IntruderCameraHelper {
     }
 
     fun releaseCamera() {
+        requestGeneration++
         try {
             currentCameraProvider?.unbindAll()
             imageCapture = null

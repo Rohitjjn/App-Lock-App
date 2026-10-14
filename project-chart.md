@@ -1,3 +1,6 @@
+## 2026-10-14 — Current data-flow correction
+Active detection: Room locked-app Flow → atomic immutable LockedPackageCache snapshot → UsageStats polling → LockActivity → HashUtil/biometric UI → monotonic temporary unlock session. Historical Accessibility/secret-code paths below are not active root-module components. Read docs/loops/loop-1-report.md for remaining readiness/new-intent races. App list: installed metadata + Room → unfiltered state/count → search/sort → visible row icons on IO, bounded128 cache.
+
 # Project Charts — App Lock
 
 ## 1. App Launch Intercept Flow (Critical Path)
