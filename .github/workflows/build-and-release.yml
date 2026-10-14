@@ -21,20 +21,32 @@ jobs:
     permissions:
       contents: write
     env:
-      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+      RELEASE_TAG_INPUT: ${{ inputs.release_tag || github.ref_name }}
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_tag || github.ref }}
+          ref: ${{ inputs.release_tag && (startsWith(inputs.release_tag, 'v') && inputs.release_tag || format('v{0}', inputs.release_tag)) || github.ref }}
           fetch-depth: 0
       - name: Validate release tag
         run: |
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          # Accept either 1.0.2 or v1.0.2 from workflow_dispatch; push-tag runs
+          # already use the canonical vX.Y.Z form.
+          if [[ "$RELEASE_TAG_INPUT" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            RELEASE_TAG="v${RELEASE_TAG_INPUT#v}"
+          else
+            echo "::error::Invalid release tag '$RELEASE_TAG_INPUT'. Use 1.2.3 or v1.2.3."
+            exit 1
+          fi
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          if ! git rev-parse -q --verify "refs/tags/$RELEASE_TAG^{commit}" >/dev/null; then
+            echo "::error::Tag '$RELEASE_TAG' does not exist in Rohitjjn/App-Lock-App. Create and push that version tag first, then rerun this workflow."
+            exit 1
+          fi
           test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
       - uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: temurin
       - uses: gradle/actions/setup-gradle@v4
       - name: Ensure compile SDK from hosted runner
