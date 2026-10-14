@@ -242,7 +242,7 @@ fun SettingsScreen(
         }
     }
 
-    val onUninstallProtectionCheckedChange = remember(viewModel, context, adminComponent, dpm) {
+    val onUninstallProtectionCheckedChange: (Boolean) -> Unit = remember(viewModel, context, adminComponent, dpm) {
         { checked: Boolean ->
             isEnablingTarget = checked
             
@@ -303,6 +303,7 @@ fun SettingsScreen(
             } else {
                 executeAction()
             }
+            Unit
         }
     }
 
