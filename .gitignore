@@ -17,3 +17,7 @@ build/
 local.properties
 .env
 debug.keystore
+
+/backup/
+*.jks
+*.keystore

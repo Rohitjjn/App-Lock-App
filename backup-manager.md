@@ -131,3 +131,9 @@ STEP 6: Log restoration event status info within changelogs.md.
 └─────────────────────────────────────────────────────────────────────────────┘
 
 === FILE 1 COMPLETE ===
+
+## 2026-10-14 — Loop 1 pre-change snapshot
+- Base: `709eba714697c3acc43ff2a95fbe70124d63de82` (139 tracked files).
+- Local archive: `backup/v3.0.6-2026-10-14-before-loop-1.zip` (493442 bytes), ignored to keep generated archives out of Git.
+- Durable recovery: base commit and incremental loop commits; extract `git archive` into a separate directory, never delete the repository.
+- Status: source snapshot only; previous device/build claims not independently verified.
