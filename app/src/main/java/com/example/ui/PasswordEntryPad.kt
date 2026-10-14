@@ -90,7 +90,7 @@ fun PasswordEntryPad(
     val app = context.applicationContext as com.example.AppLockApplication
     val encryptedPrefs = app.encryptedPrefs
 
-    val isDark = isSystemInDarkTheme()
+    val isDark = com.example.ui.theme.LocalDarkTheme.current
     val accentColor = com.example.ui.theme.LocalAccentColor.current
     val textColor = if (isDark) Color.White else Color.Black
 

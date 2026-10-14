@@ -85,7 +85,7 @@ fun PinPad(
         }
     }
 
-    val isDark = isSystemInDarkTheme()
+    val isDark = com.example.ui.theme.LocalDarkTheme.current
     val accentColor = com.example.ui.theme.LocalAccentColor.current
     val textColor = if (isDark) Color.White else Color.Black
     val circleButtonBg = if (isDark) Color(0xFF191919) else Color(0xFFEDEDF0)

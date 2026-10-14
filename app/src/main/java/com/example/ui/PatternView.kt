@@ -37,7 +37,7 @@ fun PatternView(
     onIncorrectAttempt: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background == com.example.ui.theme.XaiCanvas
+    val isDark = com.example.ui.theme.LocalDarkTheme.current
     val textColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0A0A0A)
     val accentColor = com.example.ui.theme.LocalAccentColor.current
     var isWrong by remember { mutableStateOf(false) }
@@ -123,7 +123,7 @@ fun PatternCanvas(
     val realLineColorHex = remember { encryptedPrefs.getLockPatternLineColor() }
     val patternAnimation = remember { encryptedPrefs.getLockPatternAnimation() }
     
-    val isDark = isSystemInDarkTheme()
+    val isDark = com.example.ui.theme.LocalDarkTheme.current
     val accentColor = com.example.ui.theme.LocalAccentColor.current
     val textColor = if (isDark) Color.White else Color.Black
 

@@ -156,7 +156,7 @@ fun LockScreen(
     }
 
     // 1. Theme colors matching requirements: default black accent for light mode and white accent for dark mode
-    val isDark = isSystemInDarkTheme()
+    val isDark = com.example.ui.theme.LocalDarkTheme.current
 
     // Helper function to read value
     fun getPrefString(key: String, defaultValue: String): String {
@@ -279,7 +279,7 @@ fun LockScreen(
     }
 
     val defaultAccentColor = com.example.ui.theme.LocalAccentColor.current
-    val accentColor = remember(defaultAccentColor) {
+    val accentColor = remember(defaultAccentColor, isDark) {
         resolveCustomColor("Default", defaultAccentColor)
     }
     val textColor = if (isDark) Color.White else Color.Black
