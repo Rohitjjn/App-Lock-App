@@ -4,6 +4,8 @@ import com.example.util.CacheRegressionChecks
 
 import com.example.util.VersionRegressionChecks
 
+import com.example.util.CooldownRegressionChecks
+
 fun main() {
     HashRegressionChecks.rejectsMissingAndMalformedCredentials()
     HashRegressionChecks.preservesLegacyHashFormat()
@@ -12,5 +14,6 @@ fun main() {
     CacheRegressionChecks.concurrentReadersSeeCompleteSnapshots()
     VersionRegressionChecks.comparesNumericVersions()
     VersionRegressionChecks.rejectsUnknownVersions()
-    println("PASS: 7 hash/cache/version regression groups (production Kotlin/JCA, no Android mocks)")
+    CooldownRegressionChecks.roundsUpUntilTheExactDeadline()
+    println("PASS: 8 hash/cache/version/cooldown regression groups (production Kotlin/JCA, no Android mocks)")
 }

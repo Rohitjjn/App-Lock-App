@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.widget.Toast
 import com.example.AppLockApplication
+import com.example.util.CooldownPolicy
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -75,7 +76,9 @@ fun LockScreen(
 
     // Cooldown verification state
     var wrongAttemptsCount by remember { mutableStateOf(encryptedPrefs.getWrongAttempts()) }
-    var cooldownSecondsRemaining by remember { mutableStateOf(0L) }
+    var cooldownSecondsRemaining by remember {
+        mutableStateOf(CooldownPolicy.remainingSeconds(encryptedPrefs.getCooldownEndTime(), System.currentTimeMillis()))
+    }
     var showResetDialog by remember { mutableStateOf(false) }
 
     // Security Question state loaded asynchronously from DB
@@ -92,7 +95,7 @@ fun LockScreen(
             val now = System.currentTimeMillis()
             val cooldownEnd = encryptedPrefs.getCooldownEndTime()
             if (cooldownEnd > now) {
-                cooldownSecondsRemaining = (cooldownEnd - now) / 1000
+                cooldownSecondsRemaining = CooldownPolicy.remainingSeconds(cooldownEnd, now)
             } else {
                 cooldownSecondsRemaining = 0L
                 if (encryptedPrefs.getWrongAttempts() >= 3) {
@@ -130,7 +133,10 @@ fun LockScreen(
         onDispose { com.example.util.IntruderCameraHelper.releaseCamera() }
     }
 
-    val onFailedAttempt = {
+    val onFailedAttempt = failedAttempt@ {
+        if (CooldownPolicy.isActive(encryptedPrefs.getCooldownEndTime(), System.currentTimeMillis())) {
+            return@failedAttempt
+        }
         val nextCount = wrongAttemptsCount + 1
         wrongAttemptsCount = nextCount
         encryptedPrefs.setWrongAttempts(nextCount)
@@ -467,7 +473,11 @@ fun LockScreen(
     // Secondary UI active checking method with dynamic key updates
     var activeMethod by remember(defaultStartingMethod) { mutableStateOf(defaultStartingMethod) }
 
-    val handleMethodUnlockSuccess = {
+    val handleMethodUnlockSuccess = unlock@ {
+        // Re-check persisted state, not the potentially stale countdown UI or biometric callback.
+        if (CooldownPolicy.isActive(encryptedPrefs.getCooldownEndTime(), System.currentTimeMillis())) {
+            return@unlock
+        }
         com.example.util.IntruderCameraHelper.releaseCamera()
         wrongAttemptsCount = 0
         encryptedPrefs.setWrongAttempts(0)
@@ -962,6 +972,10 @@ fun LockScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        if (CooldownPolicy.isActive(encryptedPrefs.getCooldownEndTime(), System.currentTimeMillis())) {
+                            showResetDialog = false
+                            return@Button
+                        }
                         val cleanedVal = answerInput.trim().lowercase()
                         if (cleanedVal.isEmpty()) {
                             errorMsg = "Please enter an answer"
@@ -975,7 +989,11 @@ fun LockScreen(
                             showResetDialog = false
                             onUnlockSuccess()
                         } else {
+                            onFailedAttempt()
                             errorMsg = "Incorrect answer. Please try again."
+                            if (encryptedPrefs.getCooldownEndTime() > System.currentTimeMillis()) {
+                                showResetDialog = false
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor),
