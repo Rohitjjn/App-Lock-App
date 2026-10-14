@@ -197,7 +197,7 @@ fun PinPad(
                                             val nextPin = enteredPin + key
                                             enteredPin = nextPin
                                             if (nextPin.length == pinLength) {
-                                                if (pinHash == null || com.example.util.HashUtil.verify(nextPin, pinHash)) {
+                                                if (com.example.util.HashUtil.verify(nextPin, pinHash)) {
                                                     onUnlockSuccess()
                                                 } else {
                                                     isWrong = true

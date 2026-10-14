@@ -101,13 +101,14 @@ fun PasswordEntryPad(
     val passwordUnlockButtonColor = accentColor
 
     fun handleUnlockVerify() {
+        if (isWrong) return
         playClickVibration()
         if (enteredPassword.isEmpty()) {
             errorMessage = "Password cannot be empty"
             return
         }
 
-        if (passwordHash == null || HashUtil.verify(enteredPassword, passwordHash)) {
+        if (HashUtil.verify(enteredPassword, passwordHash)) {
             onUnlockSuccess()
         } else {
             isWrong = true
@@ -208,6 +209,7 @@ fun PasswordEntryPad(
 
         Button(
             onClick = { handleUnlockVerify() },
+            enabled = !isWrong,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp)

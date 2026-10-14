@@ -76,7 +76,7 @@ fun PatternView(
                     }
                 } else {
                     val patternString = selectedDots.joinToString(",")
-                    if (patternHash == null || com.example.util.HashUtil.verify(patternString, patternHash)) {
+                    if (com.example.util.HashUtil.verify(patternString, patternHash)) {
                         onUnlockSuccess()
                     } else {
                         currentMsg = "Incorrect pattern"
