@@ -33,6 +33,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.example.R
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
@@ -69,6 +70,9 @@ fun AppListScreen(
 
     val loadError by viewModel.loadError.collectAsStateWithLifecycle()
     val lockedCount by viewModel.lockedAppCount.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     // Sub-filter to toggle between all apps and locked-only view
     var showLockedOnly by rememberSaveable { mutableStateOf(false) }
@@ -80,6 +84,7 @@ fun AppListScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -196,6 +201,25 @@ fun AppListScreen(
                                     showDropdown = false
                                 },
                                 modifier = Modifier.testTag("sort_locked_first")
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.relock_apps)) },
+                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                                onClick = {
+                                    viewModel.relockApps()
+                                    // The Quick Settings tile can change prefs without refreshing this ViewModel.
+                                    val relockMessage = context.getString(
+                                        if (viewModel.encryptedPrefs.isShieldEnabled()) R.string.relock_done
+                                        else R.string.relock_shield_off
+                                    )
+                                    showDropdown = false
+                                    scope.launch {
+                                        snackbarHostState.currentSnackbarData?.dismiss()
+                                        snackbarHostState.showSnackbar(relockMessage)
+                                    }
+                                },
+                                modifier = Modifier.testTag("relock_apps")
                             )
                         }
                     }

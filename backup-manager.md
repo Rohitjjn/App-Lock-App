@@ -1,3 +1,6 @@
+## 2026-10-14 — Loop 2 baseline
+Persistent Git baseline: ea2c3bc4cd8b4d34556dd068af116d49c2a1efd3 (merged Loop1). Before changes, `git archive HEAD` created a local untracked host-cache archive at `/home/user/.cache/safelock/loop-2-baseline.tar`. Cache artifacts are not persistent deliverables; recreate from Git if needed. Atomic commits on arena/37dbba83-app-lock-app and PR #3 preserve subsequent changes. No old backups/root/.git were removed.
+
 # Backup Manager — App Lock
 
 ## 1. Purpose

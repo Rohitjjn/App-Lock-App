@@ -12,7 +12,7 @@ accepted SDK licenses. The checked-in Gradle wrapper is 9.3.1; dependency versio
 are in `gradle/libs.versions.toml`. Minimum Android version is 9 (API 28), target 35.
 
 ```sh
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
 ./gradlew :app:connectedDebugAndroidTest  # requires a device/emulator
 ```
 
@@ -27,7 +27,7 @@ With JDK 17+ and Kotlin 2.2.10+ on PATH, pure Kotlin checks can run without the 
 ```
 
 These check hashing compatibility, atomic cache snapshots, release comparisons and
-cooldown boundaries. They do **not** replace Android compilation or device tests.
+cooldown boundaries, stable foreground targets, callback generations and shared auth attempts. They do **not** replace Android compilation or device tests.
 
 ## Protection and privacy boundaries
 
@@ -41,9 +41,17 @@ cooldown boundaries. They do **not** replace Android compilation or device tests
 - The app makes an existing automatic GitHub release check at startup and downloads
   an APK only on request. It is not network-free. This loop adds no telemetry or
   new network destination. Android's installer retains the final installation step.
-- Keystore-failure fallback storage and settings authentication/rate limiting still
-  require hardening. See `docs/loops/loop-1-report.md`; do not treat documentation's
+- Settings credential dialogs, lock entry and recovery now share a persisted
+  three-failure/30-second cooldown. This is not clock-tamper resistance or mandatory
+  reauthentication for every settings change. Keystore fallback and recovery still
+  need hardening. See `docs/loops/loop-2-report.md`; do not treat documentation's
   historical “impenetrable”, “offline-only” or latency claims as verified guarantees.
+
+## Clear temporary unlocks
+
+In the app list, open **Options and Sorting → Lock apps again**. This revokes temporary
+unlock sessions without changing saved app locks, credentials or settings. App Shield
+must be enabled for the detector to enforce locks; the confirmation explains if it is off.
 
 ## Releasing without breaking installed updates
 
@@ -68,6 +76,8 @@ it no longer publishes a release named after a branch.
 ## Loop records
 
 - [Loop 1 audit, changes and next backlog](docs/loops/loop-1-report.md)
-- [Ready-to-paste Loop 2 prompt](docs/loops/next-loop-prompt.md)
+- [Loop 2 audit, changes and next backlog](docs/loops/loop-2-report.md)
+- [Storage/recovery compatibility design](docs/loops/storage-recovery-design.md)
+- [Ready-to-paste Loop 3 prompt](docs/loops/next-loop-prompt.md)
 
 Android build/device verification must pass before merging or distributing changes.

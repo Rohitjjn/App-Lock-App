@@ -20,6 +20,9 @@ import com.example.MainActivity
 import com.example.AppLockApplication
 import com.example.ui.LockActivity
 import com.example.util.LockSessionManager
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
+import com.example.util.ForegroundTarget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -53,7 +56,8 @@ class AppDetectorService : Service() {
     private var pollingJob: Job? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var usageStatsManager: UsageStatsManager
-    private var isScreenOn = true
+    @Volatile private var isScreenOn = true
+    private val cacheReady = CompletableDeferred<Unit>()
 
     private val screenStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -92,6 +96,7 @@ class AppDetectorService : Service() {
             repository.getLockedAppsOnly().collect { apps ->
                 val packageNames = apps.map { it.packageName }.toSet()
                 LockSessionManager.updateLockedPackagesCache(packageNames)
+                cacheReady.complete(Unit)
             }
         }
     }
@@ -115,7 +120,11 @@ class AppDetectorService : Service() {
         if (pollingJob?.isActive == true) return
         
         pollingJob = scope.launch {
-            var lastCheckedApp = ""
+            // Never consume the initial resume event against an unhydrated lock cache.
+            cacheReady.await()
+            val target = ForegroundTarget()
+            var lastTrackedApp: String? = null
+            val homePackage = resolveHomePackage()
             var lastEventTime = System.currentTimeMillis() - 1000L * 60 * 60 // Start 1 hour back for first initialization
             
             while (isActive) {
@@ -124,22 +133,27 @@ class AppDetectorService : Service() {
                     val events = usageStatsManager.queryEvents(lastEventTime, queryEndTime)
                     val event = UsageEvents.Event()
                     var currentApp: String? = null
-                    var foundResume = false
                     
                     while (events.hasNextEvent()) {
                         events.getNextEvent(event)
                         if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
                             currentApp = event.packageName
-                            foundResume = true
                         }
                     }
                     
-                    if (foundResume && currentApp != null && currentApp != lastCheckedApp) {
-                        checkAppAndLock(currentApp)
-                        lastCheckedApp = currentApp
+                    // A stable foreground app still needs checks after cache/settings changes,
+                    // timeout expiry, or an OS-suppressed launch. Pending/display guards dedupe.
+                    target.update(currentApp)?.let { packageName ->
+                        if (packageName != lastTrackedApp) {
+                            LockSessionManager.updateForegroundPackage(packageName, applicationContext)
+                            lastTrackedApp = packageName
+                        }
+                        if (isScreenOn) checkAppAndLock(packageName, homePackage)
                     }
                     
                     lastEventTime = queryEndTime // Shift sliding window strictly forward
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (e: Exception) {
                     Log.e(TAG, "Polling error", e)
                 }
@@ -153,41 +167,22 @@ class AppDetectorService : Service() {
         pollingJob = null
     }
 
-    private fun checkAppAndLock(packageName: String) {
-        // Exclude own app package to avoid infinite loops, and usually home launchers
-        val myPackage = applicationContext.packageName
-        if (packageName == myPackage || isHomeLauncher(packageName)) {
-            LockSessionManager.updateForegroundPackage(packageName, applicationContext)
-            return
-        }
-
-        val encryptedPrefs = (applicationContext as AppLockApplication).encryptedPrefs
-        if (!encryptedPrefs.isShieldEnabled()) {
-            LockSessionManager.updateForegroundPackage(packageName, applicationContext)
-            return
-        }
-        
-        val lockedPackages = LockSessionManager.getLockedPackageNamesFromCache(applicationContext)
-        if (lockedPackages.contains(packageName)) {
-            val isAppLocked = LockSessionManager.isAppLocked(packageName, encryptedPrefs.getLockTimeoutMs())
-            if (!isAppLocked) {
-                // If it's already in unlocked session, let it be. But we can update foreground tracker
-                LockSessionManager.updateForegroundPackage(packageName, applicationContext)
-            } else {
-                launchLockScreen(packageName)
-            }
-        } else {
-            // App is not locked, just track it as the foreground app
-            LockSessionManager.updateForegroundPackage(packageName, applicationContext)
+    private fun checkAppAndLock(packageName: String, homePackage: String?) {
+        if (packageName == applicationContext.packageName || packageName == homePackage) return
+        val prefs = (applicationContext as AppLockApplication).encryptedPrefs
+        if (prefs.isShieldEnabled() && LockSessionManager.isPackageInLockedCache(packageName) &&
+            LockSessionManager.isAppLocked(packageName, prefs.getLockTimeoutMs())) {
+            launchLockScreen(packageName)
         }
     }
 
-    private fun isHomeLauncher(packageName: String): Boolean {
-        // Can be cached or just standard names
-        val intent = Intent(Intent.ACTION_MAIN)
-        intent.addCategory(Intent.CATEGORY_HOME)
-        val resolveInfo = packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
-        return resolveInfo?.activityInfo?.packageName == packageName
+    // Resolve once per screen-on polling session, not on every 100ms check.
+    private fun resolveHomePackage(): String? = try {
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+            ?.activityInfo?.packageName
+    } catch (error: Exception) {
+        null
     }
 
     private fun launchLockScreen(lockedPackageName: String) {

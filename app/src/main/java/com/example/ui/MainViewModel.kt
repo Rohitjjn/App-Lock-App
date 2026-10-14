@@ -38,6 +38,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AppLockRepository = app.repository
     val encryptedPrefs = app.encryptedPrefs
 
+    /** Revoke temporary unlocks without altering saved protection choices or credentials. */
+    fun relockApps() = com.example.util.LockSessionManager.clearSessions()
+
     // Cache list of installed launcher apps
     private val _installedApps = MutableStateFlow<List<AppItem>>(emptyList())
     private val _isLoading = MutableStateFlow(true)

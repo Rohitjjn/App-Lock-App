@@ -388,12 +388,17 @@ class EncryptedPrefs(private val context: Context) {
     fun isIntruderSelfieEnabled(): Boolean = prefs.getBoolean(KEY_INTRUDER_SELFIE, false)
     fun setIntruderSelfieEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_INTRUDER_SELFIE, enabled).apply()
 
-    // Wrong Attempts Persistent Counter & Cooldown
-    fun getWrongAttempts(): Int = prefs.getInt(KEY_WRONG_ATTEMPTS, 0)
-    fun setWrongAttempts(count: Int) = prefs.edit().putInt(KEY_WRONG_ATTEMPTS, count).apply()
-
-    fun getCooldownEndTime(): Long = prefs.getLong(KEY_COOLDOWN_END_TIME, 0L)
-    fun setCooldownEndTime(timestamp: Long) = prefs.edit().putLong(KEY_COOLDOWN_END_TIME, timestamp).apply()
+    // Application-scoped policy, including one atomic edit for count + deadline.
+    val authAttempts by lazy {
+        com.example.util.AuthAttemptLimiter(object : com.example.util.AuthAttemptLimiter.Store {
+            override fun attempts() = prefs.getInt(KEY_WRONG_ATTEMPTS, 0)
+            override fun deadline() = prefs.getLong(KEY_COOLDOWN_END_TIME, 0L)
+            override fun write(attempts: Int, deadline: Long) {
+                prefs.edit().putInt(KEY_WRONG_ATTEMPTS, attempts)
+                    .putLong(KEY_COOLDOWN_END_TIME, deadline).apply()
+            }
+        })
+    }
 
     // First Launch Wizard State Tracker
     fun isFirstLaunch(): Boolean = prefs.getBoolean(KEY_FIRST_LAUNCH, true)

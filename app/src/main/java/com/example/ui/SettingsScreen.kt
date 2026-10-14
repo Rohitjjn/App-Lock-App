@@ -242,7 +242,7 @@ fun SettingsScreen(
         }
     }
 
-    val onUninstallProtectionCheckedChange = remember(viewModel, context, adminComponent, dpm) {
+    val onUninstallProtectionCheckedChange: (Boolean) -> Unit = remember(viewModel, context, adminComponent, dpm) {
         { checked: Boolean ->
             isEnablingTarget = checked
             
@@ -303,6 +303,7 @@ fun SettingsScreen(
             } else {
                 executeAction()
             }
+            Unit
         }
     }
 
@@ -1087,6 +1088,7 @@ fun UninstallProtectionVerifyDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                AuthCooldownNotice(viewModel.encryptedPrefs.authAttempts)
                 Text(
                     text = "Please verify your App Lock credentials to disable Uninstall Protection.",
                     fontSize = 13.sp,
@@ -1139,12 +1141,12 @@ fun UninstallProtectionVerifyDialog(
                             isWrong = isWrong,
                             onPatternComplete = { dots ->
                                 val dotsStr = dots.joinToString(",")
-                                val verified = com.example.util.HashUtil.verify(dotsStr, viewModel.getPatternHash() ?: "")
+                                val verified = viewModel.encryptedPrefs.authAttempts.verify(dotsStr, viewModel.getPatternHash())
                                 if (verified) {
                                     onSuccess()
                                 } else {
                                     isWrong = true
-                                    errorMsg = "Incorrect pattern!"
+                                    errorMsg = authenticationError(context, viewModel)
                                     coroutineScope.launch {
                                         delay(1500)
                                         isWrong = false
@@ -1178,12 +1180,12 @@ fun UninstallProtectionVerifyDialog(
                     onClick = {
                         val isPin = configuredMethod == LockMethod.PIN
                         val targetHash = if (isPin) viewModel.getPinHash() else viewModel.getPasswordHash()
-                        val verified = com.example.util.HashUtil.verify(textInput, targetHash ?: "")
+                        val verified = viewModel.encryptedPrefs.authAttempts.verify(textInput, targetHash)
                         
                         if (verified) {
                             onSuccess()
                         } else {
-                            errorMsg = "Incorrect ${if (isPin) "PIN" else "Password"}!"
+                            errorMsg = authenticationError(context, viewModel)
                         }
                     },
                     modifier = Modifier.testTag("uninstall_verify_confirm")
@@ -1551,6 +1553,7 @@ fun PinChangeDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (step == 1) AuthCooldownNotice(viewModel.encryptedPrefs.authAttempts)
                 Text(
                     text = when (step) {
                         1 -> "Verify your existing PIN code to configure a substitute."
@@ -1610,12 +1613,12 @@ fun PinChangeDialog(
                     }
                     when (step) {
                         1 -> {
-                            val verified = HashUtil.verify(inputVal, viewModel.getPinHash() ?: "")
+                            val verified = viewModel.encryptedPrefs.authAttempts.verify(inputVal, viewModel.getPinHash())
                             if (verified) {
                                 step = 2
                                 inputVal = ""
                             } else {
-                                errorMsg = "Incorrect existing PIN"
+                                errorMsg = authenticationError(context, viewModel)
                             }
                         }
                         2 -> {
@@ -1695,7 +1698,7 @@ fun PatternChangeDialog(
 
         when (step) {
             1 -> {
-                val verifieds = HashUtil.verify(patternString, viewModel.getPatternHash() ?: "")
+                val verifieds = viewModel.encryptedPrefs.authAttempts.verify(patternString, viewModel.getPatternHash())
                 if (verifieds) {
                     step = 2
                     currentDrawnDots = emptyList()
@@ -1703,7 +1706,7 @@ fun PatternChangeDialog(
                     errorMsg = ""
                 } else {
                     isWrong = true
-                    errorMsg = "Incorrect existing pattern"
+                    errorMsg = authenticationError(context, viewModel)
                     currentDrawnDots = emptyList()
                     resetCounter++
                     coroutineScope.launch {
@@ -1767,6 +1770,7 @@ fun PatternChangeDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                if (step == 1) AuthCooldownNotice(viewModel.encryptedPrefs.authAttempts)
                 Text(
                     text = when (step) {
                         1 -> "Swipe across nodes in your current pattern sequence."
@@ -2655,6 +2659,7 @@ fun PasswordChangeDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (step == 1) AuthCooldownNotice(viewModel.encryptedPrefs.authAttempts)
                 Text(
                     text = when (step) {
                         1 -> "Verify your existing secure alphanumeric password."
@@ -2724,12 +2729,12 @@ fun PasswordChangeDialog(
                     }
                     when (step) {
                         1 -> {
-                            val verified = HashUtil.verify(inputVal, viewModel.getPasswordHash() ?: "")
+                            val verified = viewModel.encryptedPrefs.authAttempts.verify(inputVal, viewModel.getPasswordHash())
                             if (verified) {
                                 step = 2
                                 inputVal = ""
                             } else {
-                                errorMsg = "Incorrect existing password"
+                                errorMsg = authenticationError(context, viewModel)
                             }
                         }
                         2 -> {
@@ -3245,3 +3250,10 @@ private fun Context.findActivity(): androidx.fragment.app.FragmentActivity? {
     return null
 }
 
+
+// One message for all existing-credential checks; never disclose which credential matched.
+private fun authenticationError(context: Context, viewModel: MainViewModel): String {
+    val seconds = viewModel.encryptedPrefs.authAttempts.remainingSeconds()
+    return if (seconds > 0) context.getString(com.example.R.string.auth_wait)
+        else context.getString(com.example.R.string.auth_incorrect)
+}
