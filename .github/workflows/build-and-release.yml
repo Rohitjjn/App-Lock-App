@@ -5,10 +5,47 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
-      release_tag:
-        description: "Existing tag to rebuild (leave blank to release the version in app/build.gradle.kts)"
-        required: false
+      build_type:
+        description: "APK type"
+        type: choice
+        options:
+          - release
+          - debug
+        default: release
+        required: true
+      version_name:
+        description: "Version name (for example 2.0.1)"
         type: string
+        default: "2.0.0"
+        required: true
+      version_code:
+        description: "Android versionCode (positive integer; blank = GitHub run number)"
+        type: string
+        default: ""
+        required: false
+      release_tag:
+        description: "Release tag (blank = v<version_name>; does not need to exist yet)"
+        type: string
+        default: ""
+        required: false
+      release_title:
+        description: "GitHub release title (blank = v<version_name>)"
+        type: string
+        default: ""
+        required: false
+      release_notes:
+        description: "Release notes"
+        type: string
+        default: "Built with GitHub Actions."
+        required: false
+      create_release:
+        description: "Publish APK as a GitHub Release"
+        type: choice
+        options:
+          - "yes"
+          - "no"
+        default: "yes"
+        required: true
 
 permissions:
   contents: read
@@ -22,63 +59,70 @@ jobs:
       contents: write
     env:
       RELEASE_TAG_INPUT: ${{ inputs.release_tag || '' }}
+      BUILD_TYPE: ${{ inputs.build_type || 'release' }}
+      VERSION_NAME_INPUT: ${{ inputs.version_name || '' }}
+      VERSION_CODE_INPUT: ${{ inputs.version_code || '' }}
+      CREATE_RELEASE: ${{ inputs.create_release || 'yes' }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           # Manual runs without a tag build the selected branch (normally main).
           # Tag-triggered runs always build the exact tag that triggered them.
-          ref: ${{ inputs.release_tag && (startsWith(inputs.release_tag, 'v') && inputs.release_tag || format('v{0}', inputs.release_tag)) || github.ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
-      - name: Resolve and validate release version
+      - name: Resolve build and release options
         id: release
         shell: bash
         run: |
           set -euo pipefail
-
-          if [[ -n "$RELEASE_TAG_INPUT" ]]; then
-            if [[ ! "$RELEASE_TAG_INPUT" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Invalid release tag '$RELEASE_TAG_INPUT'. Use 1.2.3 or v1.2.3."
-              exit 1
-            fi
-            RELEASE_TAG="v${RELEASE_TAG_INPUT#v}"
-            if ! git rev-parse -q --verify "refs/tags/$RELEASE_TAG^{commit}" >/dev/null; then
-              echo "::error::Tag '$RELEASE_TAG' does not exist. Leave release_tag blank to build the current branch version, or create/push this exact tag first."
-              exit 1
-            fi
-            if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" ]]; then
-              echo "::error::Checked-out commit does not match tag '$RELEASE_TAG'."
-              exit 1
-            fi
-          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            RELEASE_TAG="$GITHUB_REF_NAME"
-          else
-            # Derive the tag from the actual Android app version, not a guessed input.
-            VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
-            if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Could not read a valid versionName from app/build.gradle.kts."
-              exit 1
-            fi
-            RELEASE_TAG="v$VERSION_NAME"
-            if git rev-parse -q --verify "refs/tags/$RELEASE_TAG^{commit}" >/dev/null; then
-              echo "::error::Tag '$RELEASE_TAG' already exists. Select that tag in release_tag to rebuild it, or increment versionName/versionCode for a new release."
-              exit 1
-            fi
-            # Create the version tag only after tests and signing succeed.
-            echo "CREATE_RELEASE_TAG=true" >> "$GITHUB_ENV"
+          VERSION_NAME="$VERSION_NAME_INPUT"
+          if [[ -z "$VERSION_NAME" ]]; then
+            VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"\\([^"]*\\)".*/\\1/p' app/build.gradle.kts | head -n1)"
           fi
+          if [[ ! "$VERSION_NAME" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid version_name '$VERSION_NAME'. Use a version such as 2.0.1."
+            exit 1
+          fi
+          VERSION_CODE="$VERSION_CODE_INPUT"
+          if [[ -z "$VERSION_CODE" ]]; then VERSION_CODE="$GITHUB_RUN_NUMBER"; fi
+          if [[ ! "$VERSION_CODE" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::version_code must be a positive integer."
+            exit 1
+          fi
+          if [[ "$BUILD_TYPE" != "release" && "$BUILD_TYPE" != "debug" ]]; then
+            echo "::error::build_type must be release or debug."
+            exit 1
+          fi
+          TAG="$RELEASE_TAG_INPUT"
+          if [[ -z "$TAG" ]]; then TAG="v$VERSION_NAME"; fi
+          if [[ ! "$TAG" =~ ^v?[0-9]+\\.[0-9]+\\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid release_tag '$TAG'. Use a tag such as v2.0.1."
+            exit 1
+          fi
+          if [[ "$TAG" != v* ]]; then TAG="v$TAG"; fi
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "BUILD_TYPE=$BUILD_TYPE" >> "$GITHUB_ENV"
+          echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "build_type=$BUILD_TYPE" >> "$GITHUB_OUTPUT"
+          echo "create_release=$CREATE_RELEASE" >> "$GITHUB_OUTPUT"
+          echo "### App Lock APK build" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build type: $BUILD_TYPE" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: $VERSION_NAME (code $VERSION_CODE)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Release tag: $TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publish release: $CREATE_RELEASE" >> "$GITHUB_STEP_SUMMARY"
 
-          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
-          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-          echo "Resolved release tag: $RELEASE_TAG"
-
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: temurin
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Ensure compile SDK from hosted runner
         run: |
@@ -90,6 +134,7 @@ jobs:
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug
 
       - name: Restore existing release key
+        if: env.BUILD_TYPE == 'release'
         env:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
@@ -103,8 +148,13 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
           test -s "$RUNNER_TEMP/release.jks"
 
-      - name: Build signed release APKs
-        run: ./gradlew :app:assembleRelease
+      - name: Build selected APK
+        run: |
+          if [[ "$BUILD_TYPE" == "release" ]]; then
+            ./gradlew :app:assembleRelease --stacktrace --console=plain -PversionName="$VERSION_NAME" -PversionCode="$VERSION_CODE"
+          else
+            ./gradlew :app:assembleDebug --stacktrace --console=plain -PversionName="$VERSION_NAME" -PversionCode="$VERSION_CODE"
+          fi
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/release.jks
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'upload' }}
@@ -121,19 +171,30 @@ jobs:
           git tag "$RELEASE_TAG" "$GITHUB_SHA"
           git push origin "refs/tags/$RELEASE_TAG"
 
+      - name: Collect selected APKs
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          if [[ "$BUILD_TYPE" == "release" ]]; then SOURCE="app/build/outputs/apk/release"; else SOURCE="app/build/outputs/apk/debug"; fi
+          find "$SOURCE" -maxdepth 1 -type f -name '*.apk' -exec cp {} dist/ \\;
+          test -n "$(find dist -maxdepth 1 -name '*.apk' -print -quit)"
+          ls -lh dist
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Release-APKs
-          path: app/build/outputs/apk/release/*.apk
+          name: app-lock-${{ env.BUILD_TYPE }}-v${{ env.VERSION_NAME }}
+          path: dist/*.apk
           if-no-files-found: error
 
       - name: Publish release
+        if: steps.release.outputs.create_release == 'yes'
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/*.apk
-          name: ${{ env.RELEASE_TAG }}
+          files: dist/*.apk
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          name: ${{ inputs.release_title != '' && inputs.release_title || format('v{0}', env.VERSION_NAME) }}
           tag_name: ${{ env.RELEASE_TAG }}
-          body: Download the APK matching your device, or choose the universal APK.
+          body: ${{ inputs.release_notes || 'Built with GitHub Actions.' }}
           draft: false
           prerelease: false
