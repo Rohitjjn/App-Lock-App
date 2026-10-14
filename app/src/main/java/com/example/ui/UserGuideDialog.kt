@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -157,7 +159,7 @@ fun UserGuideView(
 @Composable
 fun GuideHeaderCard(tabIndex: Int) {
     val subtitle = when (tabIndex) {
-        0 -> "Learn how SafeLock's overlay background protection engine keeps your device securely shielded on a core system level."
+        0 -> stringResource(R.string.guide_architecture)
         1 -> "Explore PIN codes, custom swipe patterns, bottom-relocated fingerprint triggers, and stealth photo logs."
         else -> "Crucial steps for persistent protection: system-level configurations and OEM overrides."
     }
@@ -225,21 +227,21 @@ fun IntroTabContent() {
             title = "1. SafeLock Overview",
             icon = Icons.Default.Info,
             color = Color(0xFF00AA5B),
-            descriptionText = "SafeLock is an advanced, offline-first application locker. It intercepts and blocks unauthorized access to private chats, system settings, galleries, and payment platforms using lightweight, real-time background protection layers."
+            descriptionText = stringResource(R.string.guide_overview)
         )
 
         DetailGuideCard(
             title = "2. Background Intercept Engine",
             icon = Icons.Default.Memory,
             color = Color(0xFF2E86DE),
-            descriptionText = "When a secure app (like WhatsApp, Settings or a customized selection) is launched, the SafeLock Usage Stats detector instantly detects the target transition. It immediately overlays our custom high-security validation screen, preventing unauthorized inputs."
+            descriptionText = stringResource(R.string.guide_detector)
         )
 
         DetailGuideCard(
             title = "3. Active Session Retention",
             icon = Icons.Default.CheckCircle,
             color = Color(0xFFFA8231),
-            descriptionText = "Once verified, an unlocked app session is securely retained on memory and stays fully bypass-unlocked for smooth multitasking. Unlocked states are strictly purged as soon as you turn off or lock your hardware screen, ensuring zero security leaks."
+            descriptionText = stringResource(R.string.guide_sessions)
         )
     }
 }
@@ -258,21 +260,21 @@ fun FeaturesManualTabContent() {
             title = "🔑 Local Credentials Hashing",
             icon = Icons.Default.LockOpen,
             color = Color(0xFF9B5DE5),
-            descriptionText = "We support multiple credential modes: alphanumeric PINs, custom swipe patterns on a fluid 3x3 touch grid, or custom text passwords. All passwords and choices are securely hashed locally using industry-grade SHA-256."
+            descriptionText = stringResource(R.string.guide_hashing)
         )
 
         DetailGuideCard(
             title = "👆 Relocated Biometric Trigger",
             icon = Icons.Default.Fingerprint,
             color = Color(0xFFE94560),
-            descriptionText = "For maximum one-handed ergonomic comfort, we've relocated the physical biometric sensor button to the lower bottom-right corner. Tap it to call the native device fingerprint system effortlessly."
+            descriptionText = stringResource(R.string.guide_biometrics)
         )
 
         DetailGuideCard(
             title = "📸 Silent Intruder Camera Selfie",
             icon = Icons.Default.CameraAlt,
             color = Color(0xFFE2C35D),
-            descriptionText = "Triggered automatically when a trespasser tries 3 consecutive wrong pass entries. SafeLock silently snaps a photo using the front camera and stores it in our localized gallery database. View unauthorized capture events under Settings > 'View Intruder Gallery'."
+            descriptionText = stringResource(R.string.guide_camera)
         )
     }
 }
@@ -295,7 +297,7 @@ fun SetupFixesTabContent() {
             icon = Icons.Default.SettingsSuggest,
             color = Color(0xFFFF9F43),
             instructions = "1. Open the primary App Lock security list.\n2. Locate the native system 'Settings' application.\n3. Click to LOCK 'Settings' immediately.",
-            importanceFocus = "Highly Recommended! Securing Settings prevents guest users or intruders from navigating to system app details and forcefully stopping or disabling SafeLock."
+            importanceFocus = stringResource(R.string.guide_settings_limit)
         )
 
         SetupStepWidget(

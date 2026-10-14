@@ -25,4 +25,14 @@
     <string name="relock_apps">Lock apps again</string>
     <string name="relock_done">Temporary unlocks cleared. Protected apps will ask you to authenticate again.</string>
     <string name="relock_shield_off">Temporary unlocks cleared. Turn on App Shield to enforce your saved locks.</string>
+    <string name="intro_protection">Choose a PIN, password, pattern, or device biometrics to protect selected apps. Protection depends on Android permissions and background restrictions.</string>
+    <string name="intro_camera">Optional intruder photos can use the front camera after repeated incorrect attempts. Enable the feature and grant camera permission in Settings. Android may show a camera privacy indicator.</string>
+    <string name="guide_architecture">Learn how SafeLock detects foreground apps and requests authentication. It is not a replacement for the Android screen lock.</string>
+    <string name="guide_overview">SafeLock adds authentication to selected apps. Lock decisions and credentials are local; the app also contacts GitHub to check for updates. Android and manufacturer restrictions can delay or stop detection.</string>
+    <string name="guide_detector">With Usage Access granted and App Shield enabled, SafeLock polls foreground app events and requests a lock activity for protected apps. Detection is not instantaneous, and Android can restrict background activity launches.</string>
+    <string name="guide_sessions">Temporary unlocks are kept in memory. Screen-off clears them; timeout and exit settings can relock apps sooner. Use Lock apps again in the app-list options to clear temporary unlocks without changing saved locks.</string>
+    <string name="guide_hashing">Choose numeric PINs, patterns, or text passwords. Credentials are stored as salted PBKDF2-HMAC-SHA256 hashes, not plaintext. Three incorrect credential attempts pause verification for 30 seconds across lock and settings checks.</string>
+    <string name="guide_biometrics">Tap the biometric button to open Android authentication. The physical sensor location and available biometric methods depend on your device.</string>
+    <string name="guide_camera">When enabled with camera permission, lock-screen failures can request a front-camera photo after three incorrect attempts. Capture is best-effort and may show an Android privacy indicator. Photos are private app files, not encrypted gallery records. View and delete them in Settings &gt; View Intruder Gallery.</string>
+    <string name="guide_settings_limit">Protecting Settings adds a check during normal use. It cannot guarantee protection from force-stop, safe mode, permission revocation, or uninstall through Android system controls.</string>
 </resources>

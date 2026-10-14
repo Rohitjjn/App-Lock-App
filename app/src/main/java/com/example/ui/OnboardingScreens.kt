@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -182,13 +184,13 @@ fun IntroScreensContent(
     val introPages = listOf(
         IntroPageData(
             title = "Proactive Shield",
-            description = "Secure applications with military-grade lock types including custom PIN, complex passwords, pattern sequences, or lightning biometrics.",
+            description = stringResource(R.string.intro_protection),
             icon = Icons.Default.LockClock,
             colorAccent = MaterialTheme.colorScheme.primary
         ),
         IntroPageData(
             title = "Intruder Alert Log",
-            description = "Never wonder who is spying. SafeLock silently snaps visual camera logs of trespassers on wrong locks automatically.",
+            description = stringResource(R.string.intro_camera),
             icon = Icons.Default.CameraAlt,
             colorAccent = com.example.ui.theme.LocalAccentColor.current
         ),
