@@ -23,6 +23,8 @@ import com.example.util.LockSessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -49,7 +51,7 @@ class AppDetectorService : Service() {
     }
 
     private var pollingJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var usageStatsManager: UsageStatsManager
     private var isScreenOn = true
 
@@ -74,6 +76,7 @@ class AppDetectorService : Service() {
     override fun onCreate() {
         super.onCreate()
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        isScreenOn = (getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isInteractive
         createNotificationChannel()
         
         val filter = IntentFilter().apply {
@@ -202,7 +205,12 @@ class AppDetectorService : Service() {
             addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
             addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         }
-        startActivity(intent)
+        try {
+            startActivity(intent)
+        } catch (error: Exception) {
+            LockSessionManager.clearLaunchPending(lockedPackageName)
+            throw error // The polling loop logs and retries; do not record a successful transition.
+        }
 
         // Safe fallback: Clear pending flag after 1 second in case startActivity fails or LockActivity is killed early
         scope.launch {
@@ -249,6 +257,7 @@ class AppDetectorService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         stopPolling()
+        scope.cancel() // Also cancel the Room observer and delayed launch cleanup jobs.
         try {
             unregisterReceiver(screenStateReceiver)
         } catch (e: Exception) {}
