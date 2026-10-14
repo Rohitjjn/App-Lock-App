@@ -214,7 +214,10 @@ The next prompt must be fully self-contained, because I will paste it into a fre
 25. d6970cb: correct/localize unsupported in-app instant-protection, camera, KDF and session claims.
 26. d7ea306: fix CI-exposed Settings Boolean→Any callback inference after returning cancellable prompt; explicit Unit contract.
 27. eb3582d: synthetic legacy preference fixtures preserve cooldown/credential/DB-key values across wrapper recreation.
-28. Loop2 docs: audit/backlog, non-destructive storage/recovery plan, tracking records and complete Loop3 prompt.
+28. 24d87b1 / Loop2 docs: audit/backlog, non-destructive storage/recovery plan, tracking records and complete Loop3 prompt.
+
+29. 170818c: relock feedback reads current persisted shield state rather than stale ViewModel state after tile changes.
+30. Final Loop2 docs: record follow-up CI success and complete handoff.
 
 ### Ranked open backlog and reasoning
 
@@ -235,7 +238,7 @@ Paths below are relative to app/src/main/java/com/example unless prefixed otherw
 - Shared limiter retains wall-clock deadlines and SharedPreferences.apply; clock tampering/power-loss persistence remain unresolved. Master shield/admin biometric/sensitive-action flows are not all covered by the new credential policy. Recovery semantics deliberately unchanged pending fixtures.
 - Read Rules.md and project docs; historical “impenetrable”, “offline-only”, instant or passed claims are not authoritative. Git archive can create a separate baseline; never delete repository root/.git. Local cache/tool artifacts are not committed/persisted as deliverables.
 - Host JDK21.0.8.2 via PyPI jdk4py and Kotlin2.2.10 via npm supported tools/run-core-checks.sh: **11 regression groups passed**. Local ./gradlew --version failed distribution download SSL handshake (services.gradle.org outside allowlist); no local SDK/emulator.13 active XML and2 workflow YAML files parsed; diff checks passed. PyYAML had to be installed host-only.
-- Loop2 Android verification **PASSED at eb3582d**, run https://github.com/Rohitjjn/App-Lock-App/actions/runs/38517565482 : testDebugUnitTest **23 tests,9 suites,0 failed/errors/skipped**; lintDebug **0errors/187other findings**; assembleDebug and assembleDebugAndroidTest succeeded. Earlier run38517153107 failed callback type inference, fixed d7ea306; superseded runs cancelled. Actions runtime deprecation warnings remain. After eb3582d only documentation changes; inspect actual next-session head checks.
+- Loop2 Android verification **PASSED at170818c**, run https://github.com/Rohitjjn/App-Lock-App/actions/runs/38518301076 : testDebugUnitTest **23 tests,9 suites,0 failed/errors/skipped**; lintDebug **0errors/187other findings**; assembleDebug and assembleDebugAndroidTest succeeded. Earlier run38517153107 failed callback type inference, fixed d7ea306; superseded runs cancelled. Actions runtime deprecation warnings remain. After170818c only documentation changes; inspect actual next-session head checks.
 - Still UNVERIFIED: instrumentation execution/emulator/hardware, real service/activity lifecycle and biometrics, TalkBack/visual output, OEM restrictions, signed release/original-key upgrade, Keystore/SQLCipher recovery/migration, update integration, camera/CPU/memory/battery benchmarks, exhaustive audit.
 
 ## THIS LOOP'S PRIORITY TASKS
