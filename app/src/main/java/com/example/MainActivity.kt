@@ -229,8 +229,27 @@ class MainActivity : FragmentActivity() {
                         val patternHash = remember { viewModel.getPatternHash() }
                         val isVibrationEnabled = remember { viewModel.vibrationEnabled.value }
 
-                        val executor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
+                        val executor = remember(context) { ContextCompat.getMainExecutor(context) }
                         val biometricHelper = remember { com.example.util.BiometricHelper() }
+                        val biometricRequests = remember { com.example.util.AuthRequestGeneration() }
+                        var biometricPrompt by remember { mutableStateOf<androidx.biometric.BiometricPrompt?>(null) }
+                        val authLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+                        DisposableEffect(authLifecycle) {
+                            val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                                if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                                    biometricRequests.invalidate()
+                                    biometricPrompt?.cancelAuthentication()
+                                    biometricPrompt = null
+                                }
+                            }
+                            authLifecycle.addObserver(observer)
+                            onDispose {
+                                biometricRequests.invalidate()
+                                biometricPrompt?.cancelAuthentication()
+                                biometricPrompt = null
+                                authLifecycle.removeObserver(observer)
+                            }
+                        }
 
                         com.example.ui.LockScreen(
                             appName = appName,
@@ -258,18 +277,25 @@ class MainActivity : FragmentActivity() {
                             },
                             onTriggerBiometric = { onSuccessCallback ->
                                 val fragmentActivity = context.findActivity()
-                                if (fragmentActivity != null) {
-                                    biometricHelper.authenticate(
+                                if (fragmentActivity != null && biometricPrompt == null) {
+                                    val token = biometricRequests.current
+                                    biometricPrompt = biometricHelper.authenticate(
                                         activity = fragmentActivity,
                                         executor = executor,
                                         title = "SafeLock Shield",
                                         subtitle = "Verify with biometric key to open SafeLock",
                                         onSuccess = {
                                             fragmentActivity.runOnUiThread {
-                                                onSuccessCallback()
+                                                if (biometricRequests.accepts(token) &&
+                                                    authLifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                                                    biometricPrompt = null
+                                                    onSuccessCallback()
+                                                }
                                             }
                                         },
-                                        onError = { _, _ -> },
+                                        onError = { _, _ ->
+                                            if (biometricRequests.accepts(token)) biometricPrompt = null
+                                        },
                                         onFailed = {}
                                     )
                                 }
