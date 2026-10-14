@@ -50,7 +50,8 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.util.BiometricHelper
 import com.example.util.HashUtil
 import com.example.util.LockSessionManager
-import java.util.concurrent.Executors
+import androidx.core.content.ContextCompat
+import com.example.util.AuthRequestGeneration
 
 class LockActivity : FragmentActivity() {
 
@@ -64,7 +65,9 @@ class LockActivity : FragmentActivity() {
     private var isTileToggleAction: Boolean = false
     private lateinit var encryptedPrefs: EncryptedPrefs
     private val biometricHelper by lazy { BiometricHelper() }
-    private val executor = Executors.newSingleThreadExecutor()
+    private val requests = AuthRequestGeneration()
+    private var contentGeneration by mutableLongStateOf(0L)
+    private var biometricPrompt: androidx.biometric.BiometricPrompt? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,18 +107,7 @@ class LockActivity : FragmentActivity() {
         val app = application as AppLockApplication
         encryptedPrefs = app.encryptedPrefs
 
-        isTileToggleAction = intent.getBooleanExtra("EXTRA_TILE_TOGGLE_ACTION", false)
-        lockedPackageName = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: ""
-        actionKeyword = intent.getStringExtra("ACTION_KEYWORD")
-
-        if (isTileToggleAction) {
-            lockedPackageName = "com.example.tile_toggle"
-        } else if (lockedPackageName.isEmpty()) {
-            finish()
-            return
-        }
-
-        LockSessionManager.currentlyDisplayingLockFor = lockedPackageName
+        if (!bindTarget(intent)) return
 
         // 3. Jetpack Compose error layout safe fallback rendering catch blocks
         try {
@@ -131,7 +123,7 @@ class LockActivity : FragmentActivity() {
                     }
                 }
                 MyApplicationTheme(darkTheme = useDarkTheme, accentColorHex = accentColorHex) {
-                    LockScreenContent()
+                    key(contentGeneration) { LockScreenContent() }
                 }
             }
         } catch (e: Exception) {
@@ -141,6 +133,42 @@ class LockActivity : FragmentActivity() {
             return
         }
     }
+
+    private fun invalidateRequests() {
+        contentGeneration = requests.invalidate()
+        biometricPrompt?.cancelAuthentication()
+        biometricPrompt = null
+        isBiometricPromptShowing = false
+    }
+
+    private fun bindTarget(newIntent: Intent): Boolean {
+        isTileToggleAction = newIntent.getBooleanExtra("EXTRA_TILE_TOGGLE_ACTION", false)
+        lockedPackageName = if (isTileToggleAction) "com.example.tile_toggle"
+            else newIntent.getStringExtra(EXTRA_PACKAGE_NAME).orEmpty()
+        actionKeyword = newIntent.getStringExtra("ACTION_KEYWORD")
+        if (lockedPackageName.isBlank()) {
+            finish()
+            return false
+        }
+        LockSessionManager.clearLaunchPending(lockedPackageName)
+        LockSessionManager.currentlyDisplayingLockFor = lockedPackageName
+        return true
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        invalidateRequests() // Invalidate before cancellation can deliver a queued callback.
+        if (LockSessionManager.currentlyDisplayingLockFor == lockedPackageName) {
+            LockSessionManager.currentlyDisplayingLockFor = null
+        }
+        LockSessionManager.clearLaunchPending(lockedPackageName)
+        setIntent(intent)
+        bindTarget(intent)
+    }
+
+    private fun accepts(token: Long): Boolean = requests.accepts(token) &&
+        !isFinishing && !isDestroyed &&
+        lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
@@ -152,20 +180,24 @@ class LockActivity : FragmentActivity() {
 
     private fun triggerBiometricAuth(onSuccess: () -> Unit) {
         if (isBiometricPromptShowing) return
+        val token = requests.current
+        if (!accepts(token)) return
         isBiometricPromptShowing = true
-        biometricHelper.authenticate(
+        biometricPrompt = biometricHelper.authenticate(
             activity = this,
-            executor = executor,
+            executor = ContextCompat.getMainExecutor(this),
             title = "App Lock Biometrics",
             subtitle = "Verify to unlock application",
             onSuccess = {
                 runOnUiThread {
+                    if (!accepts(token)) return@runOnUiThread
                     isBiometricPromptShowing = false
                     onSuccess()
                 }
             },
             onError = { errorCode, errString ->
                 runOnUiThread {
+                    if (!accepts(token)) return@runOnUiThread
                     isBiometricPromptShowing = false
                     // Ignore user canceled, canceled by system/back, and negative (cancel) button click codes
                     if (errorCode != 5 && errorCode != 10 && errorCode != 13) {
@@ -175,7 +207,8 @@ class LockActivity : FragmentActivity() {
             },
             onFailed = {
                 runOnUiThread {
-                    isBiometricPromptShowing = false
+                    if (!accepts(token)) return@runOnUiThread
+                    // A failed scan is non-terminal; the same system prompt remains active.
                     Toast.makeText(this@LockActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -183,6 +216,7 @@ class LockActivity : FragmentActivity() {
     }
 
     private fun handleUnlockSuccess() {
+        invalidateRequests()
         if (isTileToggleAction) {
             val currentShieldState = encryptedPrefs.isShieldEnabled()
             val newShieldState = !currentShieldState
@@ -214,6 +248,7 @@ class LockActivity : FragmentActivity() {
     }
 
     private fun handleUnlockCancel(byBackPress: Boolean = false) {
+        invalidateRequests()
         if (isTileToggleAction) {
             finish()
             return
@@ -269,6 +304,7 @@ class LockActivity : FragmentActivity() {
 
     @Composable
     fun LockScreenContent() {
+        val token = requests.current
         val context = LocalContext.current
         val appName = remember { getAppName(context, lockedPackageName) }
         val appIcon = remember { getAppIcon(context, lockedPackageName) }
@@ -285,9 +321,9 @@ class LockActivity : FragmentActivity() {
             pinHash = pinHash,
             patternHash = patternHash,
             isVibrationEnabled = isVibrationEnabled,
-            onUnlockSuccess = { handleUnlockSuccess() },
+            onUnlockSuccess = { if (accepts(token)) handleUnlockSuccess() },
             onIncorrectAttempt = { triggerVibration() },
-            onTriggerBiometric = { onSuccessCallback -> triggerBiometricAuth(onSuccessCallback) },
+            onTriggerBiometric = { onSuccessCallback -> if (accepts(token)) triggerBiometricAuth(onSuccessCallback) },
             onCancel = { handleUnlockCancel(byBackPress = true) },
             actionKeyword = actionKeyword
         )
@@ -324,11 +360,14 @@ class LockActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
-        LockSessionManager.clearLaunchPending(lockedPackageName)
-        LockSessionManager.currentlyDisplayingLockFor = lockedPackageName
+        if (!isFinishing && lockedPackageName.isNotBlank()) {
+            LockSessionManager.clearLaunchPending(lockedPackageName)
+            LockSessionManager.currentlyDisplayingLockFor = lockedPackageName
+        }
     }
 
     override fun onStop() {
+        invalidateRequests()
         super.onStop()
         if (LockSessionManager.currentlyDisplayingLockFor == lockedPackageName) {
             LockSessionManager.currentlyDisplayingLockFor = null
@@ -336,15 +375,11 @@ class LockActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        invalidateRequests()
         super.onDestroy()
         if (LockSessionManager.currentlyDisplayingLockFor == lockedPackageName) {
             LockSessionManager.currentlyDisplayingLockFor = null
         }
         LockSessionManager.clearLaunchPending(lockedPackageName)
-        try {
-            executor.shutdown()
-        } catch (e: Exception) {
-            // Ignore
-        }
     }
 }

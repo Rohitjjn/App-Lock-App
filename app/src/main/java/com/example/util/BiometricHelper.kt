@@ -72,7 +72,7 @@ class BiometricHelper() {
         onSuccess: (BiometricPrompt.AuthenticationResult) -> Unit,
         onError: (Int, CharSequence) -> Unit,
         onFailed: () -> Unit
-    ) {
+    ): BiometricPrompt {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
@@ -102,5 +102,6 @@ class BiometricHelper() {
 
         // Bypass CryptoObject to prevent hardware Keystore thread-blocking and UI stutters
         biometricPrompt.authenticate(promptInfo)
+        return biometricPrompt
     }
 }
