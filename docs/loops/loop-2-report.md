@@ -122,6 +122,15 @@ names, hash formats, database schemas, app IDs or lock rows were changed.
   2 workflow YAML files, working-tree and baseline-to-HEAD whitespace checks. Initial
   YAML check lacked PyYAML; installed host-only PyYAML 6.0.3 and reran successfully.
 
+- Documentation-head run [38518674395](https://github.com/Rohitjjn/App-Lock-App/actions/runs/38518674395)
+  at `b83b492` also **succeeded** with 23 tests and the same lint/APK results, but
+  emitted a failure-level annotation: `ksp.com.intellij...ApplicationManager.getApplication()`
+  was null while resolving `Application.getService`. This resembles earlier Loop1
+  KSP cleanup diagnostics; the cause is **not verified**. Full log download via
+  `gh run view --log` failed at the blocked results-receiver host (EOF). Treat this
+  as unresolved tooling debt, not a failed Android task or a warning-free run.
+  A final documentation-only commit records this observation; its own rerun may be pending.
+
 ### Unverified
 
 - Emulator/hardware execution of Compose tests, TalkBack, large fonts, forced-theme
@@ -162,7 +171,7 @@ lenses, not independent consensus. Effort S/M/L; risk is implementation risk.
 | **Maya Chen** | 1. Implement storage fixture matrix before migration (`data/local/EncryptedPrefs.kt:18–88`; `docs/loops/storage-recovery-design.md`) — highest unresolved confidentiality/data-loss risk; L/High. 2. Extend generation/cooldown gating to admin biometric action and remove null-activity authorization (`ui/SettingsScreen.kt:244–307`) — close remaining auth path; M/High. 3. Add archive package/version/signer checks (`util/AutoUpdater.kt:109–127`) — reject unexpected updates before installer; M/Medium. |
 | **Owen Brooks** | 1. Off-main sampled gallery/wallpaper decoding (`ui/SettingsScreen.kt:2881,2969`; `ui/LockScreen.kt:1248`) — reduce frame stalls/memory; M/Medium. 2. Benchmark added steady-target checks (`service/AppDetectorService.kt:145–157`) before changing 100ms cadence — bound CPU/battery without weakening latency; M/Medium. 3. Move KDF verification off-main with serialized results (`util/AuthAttemptLimiter.kt:39–44`; `util/HashUtil.kt:67`) — prevent UI stalls without stale-success races; M/High. |
 | **Leila Haddad** | 1. Explicit backup/transfer exclusions (`res/xml/data_extraction_rules.xml:2`) — align consent with private data; S/Medium. 2. Generation-bound capture completion (`util/IntruderCameraHelper.kt:96–105,125–130`) — stale work cannot release new camera owner; M/Medium. 3. Complete localization/TalkBack pass (`ui/OnboardingScreens.kt:615,737`; `ui/SettingsScreen.kt:2931`) — understandable status and distinct image delete labels; M/Low. |
-| **Priya Nair** | 1. Run instrumentation on API28/35 (`.github/workflows/verify.yml:36`; `app/src/androidTest/`) — move beyond APK compilation; M/Medium. 2. Validate original-key signed upgrade (`.github/workflows/build-and-release.yml:45–65`) — preserve installed user data; M/High, owner key required. 3. Pin actions and wrapper checksum (`.github/workflows/verify.yml:23–28`; `gradle/wrapper/gradle-wrapper.properties:3`) — supply-chain hardening; S/Low. |
+| **Priya Nair** | 1. Run instrumentation on API28/35 (`.github/workflows/verify.yml:36`; `app/src/androidTest/`) — move beyond APK compilation; M/Medium. 2. Validate original-key signed upgrade (`.github/workflows/build-and-release.yml:45–65`) — preserve installed user data; M/High, owner key required. 3. Investigate the recurring KSP cleanup annotation (run38518674395), pin actions and wrapper checksum (`.github/workflows/verify.yml:23–28`; `gradle/wrapper/gradle-wrapper.properties:3`) — supply-chain hardening; S/Low. |
 | **Victor Hale** | 1. Finish unread Settings customization/archive audit (`ui/SettingsScreen.kt:1850–2630`; `assets/.aistudio`) — remove audit coverage gap; M/Low. 2. Export v1 schema and test migrations before any bump (`data/local/AppDatabase.kt:13,31`) — avoid future lock-row loss; M/Medium. 3. Reconcile remaining historical/in-app claims (`ui/SettingsScreen.kt:561,615`; `security-protocol.md`) — avoid overstated guarantees; M/Low. |
 
 ### Adrian Cole — ranked next-loop selection and deferrals

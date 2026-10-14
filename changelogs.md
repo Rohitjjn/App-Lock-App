@@ -3,6 +3,7 @@
 - Tests: GitHub run38518301076 at170818c passed23 JVM tests across9 suites, lint0errors/187other findings, debug and instrumentation APK compilation.11 host core groups passed. Device execution/original-key upgrades/exhaustive audit remain unverified.
 - Follow-up:170818c reads current shield preference for relock feedback after tile changes; reverified Android CI.
 - Design: storage/recovery fixture and non-destructive migration plan only; no stored key/schema/hash/app-ID changes. CI callback inference regression corrected in d7ea306.
+- CI follow-up: documentation-head run38518674395 also succeeded but emitted a recurring KSP/IntelliJ cleanup annotation; root cause unverified because full log host is blocked. Recorded in report/known issues/handoff.
 - Details and commits: docs/loops/loop-2-report.md; next prompt is now Loop3.
 
 ## 2026-10-14 — Verification follow-up
