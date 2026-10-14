@@ -1,3 +1,6 @@
+## 2026-10-14 — Active architecture correction
+The root app uses UsageStatsManager polling in AppDetectorService, not the historical AccessibilityService shown below. INTERNET and REQUEST_INSTALL_PACKAGES are declared for existing GitHub auto-update behavior. Root :app is authoritative; assets/.aistudio is archived. No guarantee of zero latency or prevention of all Android/OEM bypasses is justified. Loop 1 adds immutable cache snapshots, lifecycle scope cleanup and lazily loaded bounded icons; no DB schema change. See README and docs/loops/loop-1-report.md.
+
 # Project Blueprint — App Lock (Android 14+)
 
 ## 1. Project Identity

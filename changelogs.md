@@ -1,3 +1,11 @@
+## 2026-10-14 — Loop 1 security, reliability and app-list improvements
+- Version: existing application version unchanged; no data/schema migration.
+- Changed: hash/credential fail-closed handling, atomic session cache, detector scope cleanup, secure windows/camera consent, app-list refresh/accessibility/lazy icons, update retry/version validation, forced theme consistency and recovery cooldown checks.
+- Changed: PR verification and stable release signing secrets; README and loop audit/prompt.
+- Reason: verified code defects and bounded, backward-compatible improvements.
+- Tested: PARTIAL — 8 host Kotlin regression groups and syntax/XML/YAML/diff checks passed. Android build/lint/device checks blocked, NOT passed.
+- Related: F01–F24 in docs/loops/loop-1-report.md. Full files/commits/deferred risks listed there.
+
 # Changelog — App Lock
 
 ## 1. Purpose

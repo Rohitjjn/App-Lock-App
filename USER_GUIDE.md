@@ -1,3 +1,10 @@
+## 2026-10-14 — Current behavior notes
+- Use the refresh action in the app-list toolbar to detect newly installed apps without restarting. Empty/error states offer Clear search, Show all apps or Try again; refreshing does not delete saved locks.
+- Intruder selfies require the in-app opt-in AND camera permission. Disable the toggle to stop future capture; delete existing photos from the gallery separately.
+- Screenshots/screen recordings of sensitive SafeLock activities are blocked.
+- Update checks are automatic existing GitHub network requests. Only a newer numeric stable tag with an APK is offered; failed downloads allow retry or dismissal. Opening the installer does not mean installation completed.
+- Release signing setup requires the original stable key in Actions secrets; see README. Earlier setup instructions below describe historical defaults.
+
 # User Guide Updates
 
 ## Notification Handling

@@ -1,3 +1,10 @@
+## 2026-10-14 — Source-backed security status
+- Patched: null/malformed credential denial, MessageDigest.isEqual verification, atomic lock cache and exact app-ID exemption; FLAG_SECURE restored on both activities; intruder capture now checks opt-in/permission and invalidates late preparation; recovery attempts/callbacks check persisted cooldown.
+- Compatibility: PBKDF2-HMAC-SHA256, 10000 iterations, 16-byte random salt, 32-byte hash, existing saltBase64:hashBase64 format retained. Higher work factor requires versioning/measurement, not an in-place constant change.
+- Known gaps: weak Keystore-failure fallback remains pending non-destructive migration; biometric prompt not CryptoObject-bound; photos private but not separately encrypted; settings verification lacks shared throttling. Historical Argon2/zero-network/encrypted-photo/progressive-backoff claims below are NOT current guarantees.
+- Release workflow public passwords removed; original key identity must be retained and exposed keystore passwords changed securely. Never paste secrets into chat/Git. No new network destination/telemetry.
+- Validation: pure Kotlin regression groups passed; Android/device paths unverified. See loop report.
+
 # Security Protocol — App Lock
 
 ## 1. Purpose

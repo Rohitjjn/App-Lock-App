@@ -1,3 +1,13 @@
+## 2026-10-14 — Loop 1 verification record
+- [x] Eight actual Kotlin/JCA core regression groups via tools/run-core-checks.sh.
+- [x] Active Kotlin syntax parse (not type check),13 Android XML files,2 workflow YAML files,git diff --check.
+- [ ] Gradle unit tests/lint/assemble: attempted; no Java initially, then Gradle distribution TLS download blocked after local Java provisioning.
+- [ ] Added Robolectric LockSessionManagerTest and Compose AppRowSemanticsTest execution.
+- [ ] API28/34/35/36 hardware/emulator, TalkBack/large fonts, forced light/dark, photo toggle/lifecycle, recovery/cooldown, startup/background/new-intent lock interception.
+- [ ] Update failure/cancel/install integration and original-signature in-place update with existing user data.
+- [ ] Startup/battery/memory benchmarks and exhaustive unread-file audit.
+Historical passed entries are not this loop's results. Full details: docs/loops/loop-1-report.md.
+
 # Testing Checklist — App Lock
 
 ## 1. Purpose

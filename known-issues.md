@@ -1,3 +1,6 @@
+## 2026-10-14 — Current audit overrides historical status claims
+Source fixes and open issues F01–F24 are tracked in [Loop 1 report](docs/loops/loop-1-report.md). Remaining high-risk items: weak fallback prefs, detector hydration/stable-foreground rechecks, singleTask target updates, settings auth throttling and lifecycle reauthentication. Biometric CryptoObject, photo privacy/retention, recovery reset consistency and image decoding also remain open. Do not interpret old "Stable" or "Resolved" text as device verification of this branch.
+
 # Known Issues — App Lock
 
 ## 1. Purpose

@@ -1,3 +1,6 @@
+## 2026-10-14 — Current module note
+No production dependency added in Loop 1. Root :app now includes pure HashUtil/LockedPackageCache/ReleaseVersion/CooldownPolicy regression checks plus Android test scaffolding. Actual detector uses UsageStats; historical Accessibility descriptions below are not the current runtime. See README for setup and loop report for gaps.
+
 # Project Mind Map — App Lock
 
 ## 1. Feature Hierarchy Tree

@@ -1,3 +1,6 @@
+## 2026-10-14 — Authoritative build versions
+The checked-in configuration currently specifies AGP9.1.1, Kotlin2.2.10, Gradle9.3.1, compileSdk36.1, targetSdk35, minSdk28. See gradle/libs.versions.toml for actual dependency versions; historical examples below are not authoritative. No production library added. Host-only JDK/Kotlin tooling was provisioned outside Git to run core regressions; full Android SDK/Gradle downloads were blocked in the sandbox.
+
 # Technical Specifications — App Lock
 
 ## 1. System SDK Boundaries
