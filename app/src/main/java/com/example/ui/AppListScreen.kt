@@ -70,10 +70,9 @@ fun AppListScreen(
 
     val loadError by viewModel.loadError.collectAsStateWithLifecycle()
     val lockedCount by viewModel.lockedAppCount.collectAsStateWithLifecycle()
-    val shieldEnabled by viewModel.isShieldEnabled.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val relockMessage = stringResource(if (shieldEnabled) R.string.relock_done else R.string.relock_shield_off)
 
     // Sub-filter to toggle between all apps and locked-only view
     var showLockedOnly by rememberSaveable { mutableStateOf(false) }
@@ -209,6 +208,11 @@ fun AppListScreen(
                                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                                 onClick = {
                                     viewModel.relockApps()
+                                    // The Quick Settings tile can change prefs without refreshing this ViewModel.
+                                    val relockMessage = context.getString(
+                                        if (viewModel.encryptedPrefs.isShieldEnabled()) R.string.relock_done
+                                        else R.string.relock_shield_off
+                                    )
                                     showDropdown = false
                                     scope.launch {
                                         snackbarHostState.currentSnackbarData?.dismiss()
