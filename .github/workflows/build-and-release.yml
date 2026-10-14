@@ -16,7 +16,7 @@ permissions:
 jobs:
   build:
     name: Verify and sign release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: write
@@ -36,10 +36,12 @@ jobs:
         with:
           java-version: '17'
           distribution: temurin
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
-      - name: Install compile SDK
-        run: sdkmanager 'platforms;android-36.1' 'build-tools;36.0.0'
+      - name: Ensure compile SDK from hosted runner
+        run: |
+          if [[ ! -d "$ANDROID_HOME/platforms/android-36.1" || ! -d "$ANDROID_HOME/build-tools/36.0.0" ]]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36.1' 'build-tools;36.0.0'
+          fi
       - name: Verify before signing
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug
       - name: Restore existing release key

@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -23,10 +23,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
-      - name: Install compile SDK
-        run: sdkmanager 'platforms;android-36.1' 'build-tools;36.0.0'
+      - name: Ensure compile SDK from hosted runner
+        run: |
+          if [[ ! -d "$ANDROID_HOME/platforms/android-36.1" || ! -d "$ANDROID_HOME/build-tools/36.0.0" ]]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36.1' 'build-tools;36.0.0'
+          fi
       - name: Test, lint and build debug APK
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
       - name: Upload verification reports
