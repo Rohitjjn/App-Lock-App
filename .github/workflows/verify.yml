@@ -32,6 +32,9 @@ jobs:
       - name: Test, lint and build debug APK
         shell: bash
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug 2>&1 | tee "$RUNNER_TEMP/safelock-verify.log"
+      - name: Report lint and unit test XML results
+        if: always()
+        run: python3 tools/report-ci-results.py
       - name: Surface failure details in check annotations
         if: failure()
         shell: bash
