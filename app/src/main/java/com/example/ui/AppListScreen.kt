@@ -445,9 +445,10 @@ fun AppRowItem(
         ) {
             // Load only visible rows off the UI thread; the bounded cache avoids retaining every installed icon.
             val context = LocalContext.current.applicationContext
-            val bitmap by produceState(AppIconCache.getIconFromCache(item.packageName), item.packageName) {
+            val bitmapState = produceState(AppIconCache.getIconFromCache(item.packageName), item.packageName) {
                 value = withContext(Dispatchers.IO) { AppIconCache.getIcon(context, item.packageName) }
             }
+            val bitmap = bitmapState.value
 
             if (bitmap != null) {
                 Image(
