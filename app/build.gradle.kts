@@ -14,8 +14,8 @@ android {
     applicationId = "com.aistudio.applock.vqpstz"
     minSdk = 28
     targetSdk = 35
-    versionCode = 2
-    versionName = "2.0.0"
+    versionCode = providers.gradleProperty("versionCode").orNull?.toIntOrNull() ?: 2
+    versionName = providers.gradleProperty("versionName").orNull ?: "2.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
