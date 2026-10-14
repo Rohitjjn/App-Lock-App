@@ -69,11 +69,7 @@ class LockActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // FLAG_SECURE removed to allow screenshots during development and testing as requested by user
-        // window.setFlags(
-        //     android.view.WindowManager.LayoutParams.FLAG_SECURE,
-        //     android.view.WindowManager.LayoutParams.FLAG_SECURE
-        // )
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
 
         // 1. Prevent split-screen / multi-window bypass lock bypass vectors
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

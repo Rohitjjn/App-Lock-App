@@ -126,11 +126,15 @@ fun LockScreen(
 
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
 
+    DisposableEffect(lifecycleOwner) {
+        onDispose { com.example.util.IntruderCameraHelper.releaseCamera() }
+    }
+
     val onFailedAttempt = {
         val nextCount = wrongAttemptsCount + 1
         wrongAttemptsCount = nextCount
         encryptedPrefs.setWrongAttempts(nextCount)
-        if (nextCount == 2) {
+        if (nextCount == 2 && encryptedPrefs.isIntruderSelfieEnabled()) {
             com.example.util.IntruderCameraHelper.prepareCamera(context, lifecycleOwner)
         }
         if (nextCount >= 3) {
@@ -139,8 +143,10 @@ fun LockScreen(
             cooldownSecondsRemaining = 30
             
             // Capture background silent front camera selfie of intruder within 3 seconds
-            coroutineScope.launch {
-                com.example.util.IntruderCameraHelper.takeSelfieAndClose(context)
+            if (encryptedPrefs.isIntruderSelfieEnabled()) {
+                coroutineScope.launch {
+                    com.example.util.IntruderCameraHelper.takeSelfieAndClose(context)
+                }
             }
         }
         coroutineScope.launch {

@@ -58,6 +58,8 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Protect credential setup, recovery answers, and the intruder gallery too.
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
 
         // Actively cancel keep-alive service notification and stop it if running to satisfy user requirement
         try {
