@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing version tag to release (for example v2.0.1)
-        required: true
+        description: "Existing tag to rebuild (leave blank to release the version in app/build.gradle.kts)"
+        required: false
         type: string
 
 permissions:
@@ -21,41 +21,74 @@ jobs:
     permissions:
       contents: write
     env:
-      RELEASE_TAG_INPUT: ${{ inputs.release_tag || github.ref_name }}
+      RELEASE_TAG_INPUT: ${{ inputs.release_tag || '' }}
     steps:
-      - name: Checkout release tag
+      - name: Checkout source
         uses: actions/checkout@v4
         with:
+          # Manual runs without a tag build the selected branch (normally main).
+          # Tag-triggered runs always build the exact tag that triggered them.
           ref: ${{ inputs.release_tag && (startsWith(inputs.release_tag, 'v') && inputs.release_tag || format('v{0}', inputs.release_tag)) || github.ref }}
           fetch-depth: 0
-      - name: Validate release tag
+
+      - name: Resolve and validate release version
+        id: release
+        shell: bash
         run: |
-          # Accept either 1.0.2 or v1.0.2 from workflow_dispatch; push-tag runs
-          # already use the canonical vX.Y.Z form.
-          if [[ "$RELEASE_TAG_INPUT" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          set -euo pipefail
+
+          if [[ -n "$RELEASE_TAG_INPUT" ]]; then
+            if [[ ! "$RELEASE_TAG_INPUT" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Invalid release tag '$RELEASE_TAG_INPUT'. Use 1.2.3 or v1.2.3."
+              exit 1
+            fi
             RELEASE_TAG="v${RELEASE_TAG_INPUT#v}"
+            if ! git rev-parse -q --verify "refs/tags/$RELEASE_TAG^{commit}" >/dev/null; then
+              echo "::error::Tag '$RELEASE_TAG' does not exist. Leave release_tag blank to build the current branch version, or create/push this exact tag first."
+              exit 1
+            fi
+            if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" ]]; then
+              echo "::error::Checked-out commit does not match tag '$RELEASE_TAG'."
+              exit 1
+            fi
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            RELEASE_TAG="$GITHUB_REF_NAME"
           else
-            echo "::error::Invalid release tag '$RELEASE_TAG_INPUT'. Use 1.2.3 or v1.2.3."
-            exit 1
+            # Derive the tag from the actual Android app version, not a guessed input.
+            VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+            if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Could not read a valid versionName from app/build.gradle.kts."
+              exit 1
+            fi
+            RELEASE_TAG="v$VERSION_NAME"
+            if git rev-parse -q --verify "refs/tags/$RELEASE_TAG^{commit}" >/dev/null; then
+              echo "::error::Tag '$RELEASE_TAG' already exists. Select that tag in release_tag to rebuild it, or increment versionName/versionCode for a new release."
+              exit 1
+            fi
+            # Create the version tag only after tests and signing succeed.
+            echo "CREATE_RELEASE_TAG=true" >> "$GITHUB_ENV"
           fi
+
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
-          if ! git rev-parse -q --verify "refs/tags/$RELEASE_TAG^{commit}" >/dev/null; then
-            echo "::error::Tag '$RELEASE_TAG' does not exist in Rohitjjn/App-Lock-App. Create and push that version tag first, then rerun this workflow."
-            exit 1
-          fi
-          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved release tag: $RELEASE_TAG"
+
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: temurin
+
       - uses: gradle/actions/setup-gradle@v4
+
       - name: Ensure compile SDK from hosted runner
         run: |
           if [[ ! -d "$ANDROID_HOME/platforms/android-36.1" || ! -d "$ANDROID_HOME/build-tools/36.0.0" ]]; then
             "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36.1' 'build-tools;36.0.0'
           fi
+
       - name: Verify before signing
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug
+
       - name: Restore existing release key
         env:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -68,6 +101,8 @@ jobs:
           fi
           umask 077
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          test -s "$RUNNER_TEMP/release.jks"
+
       - name: Build signed release APKs
         run: ./gradlew :app:assembleRelease
         env:
@@ -75,15 +110,24 @@ jobs:
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'upload' }}
           STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
       - name: Remove temporary key
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: Create release tag for a new version
+        if: env.CREATE_RELEASE_TAG == 'true'
+        run: |
+          git tag "$RELEASE_TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$RELEASE_TAG"
+
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Release-APKs
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
