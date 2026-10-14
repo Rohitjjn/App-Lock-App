@@ -1,3 +1,9 @@
+## 2026-10-14 — Loop 2 lifecycle and shared credential policy
+- Changed: detector readiness/stable-target rechecks; singleTask target generations and biometric cancellation; shared persisted credential cooldown; executor cleanup; live settings cooldown panels; Lock apps again control; accurate onboarding/guide claims.
+- Tests: GitHub run38517565482 at eb3582d passed23 JVM tests across9 suites, lint0errors/187other findings, debug and instrumentation APK compilation.11 host core groups passed. Device execution/original-key upgrades/exhaustive audit remain unverified.
+- Design: storage/recovery fixture and non-destructive migration plan only; no stored key/schema/hash/app-ID changes. CI callback inference regression corrected in d7ea306.
+- Details and commits: docs/loops/loop-2-report.md; next prompt is now Loop3.
+
 ## 2026-10-14 — Verification follow-up
 - Changed: LockActivity secure-back handling now uses lifecycle dispatcher; SafeLockTileService isolates the pre-34 API behind an SDK guard with a targeted lint exception.
 - Changed: GitHub workflow uses hosted SDK, bounded log/XML diagnostics; asynchronous icon state read made stable for null checking.
