@@ -1087,6 +1087,7 @@ fun UninstallProtectionVerifyDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                AuthCooldownNotice(viewModel.encryptedPrefs.authAttempts)
                 Text(
                     text = "Please verify your App Lock credentials to disable Uninstall Protection.",
                     fontSize = 13.sp,
@@ -1551,6 +1552,7 @@ fun PinChangeDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (step == 1) AuthCooldownNotice(viewModel.encryptedPrefs.authAttempts)
                 Text(
                     text = when (step) {
                         1 -> "Verify your existing PIN code to configure a substitute."
@@ -1767,6 +1769,7 @@ fun PatternChangeDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                if (step == 1) AuthCooldownNotice(viewModel.encryptedPrefs.authAttempts)
                 Text(
                     text = when (step) {
                         1 -> "Swipe across nodes in your current pattern sequence."
@@ -2655,6 +2658,7 @@ fun PasswordChangeDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (step == 1) AuthCooldownNotice(viewModel.encryptedPrefs.authAttempts)
                 Text(
                     text = when (step) {
                         1 -> "Verify your existing secure alphanumeric password."
@@ -3249,6 +3253,6 @@ private fun Context.findActivity(): androidx.fragment.app.FragmentActivity? {
 // One message for all existing-credential checks; never disclose which credential matched.
 private fun authenticationError(context: Context, viewModel: MainViewModel): String {
     val seconds = viewModel.encryptedPrefs.authAttempts.remainingSeconds()
-    return if (seconds > 0) context.getString(com.example.R.string.auth_try_again, seconds)
+    return if (seconds > 0) context.getString(com.example.R.string.auth_wait)
         else context.getString(com.example.R.string.auth_incorrect)
 }
