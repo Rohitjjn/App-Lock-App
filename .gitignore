@@ -21,3 +21,6 @@ debug.keystore
 /backup/
 *.jks
 *.keystore
+
+__pycache__/
+*.pyc

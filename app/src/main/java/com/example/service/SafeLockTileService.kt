@@ -72,11 +72,20 @@ class SafeLockTileService : TileService() {
                 )
                 startActivityAndCollapse(pendingIntent)
             } else {
-                @Suppress("DEPRECATION")
-                startActivityAndCollapse(launchIntent)
+                startLegacyActivityAndCollapse(launchIntent)
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
+
+    // PendingIntent overload exists only on API 34+. Lint's target-SDK check does not
+    // account for this SDK-gated legacy branch; keep the exception scoped here.
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
+    @Suppress("DEPRECATION")
+    private fun startLegacyActivityAndCollapse(intent: Intent) {
+        check(Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+        startActivityAndCollapse(intent)
+    }
+
 }
