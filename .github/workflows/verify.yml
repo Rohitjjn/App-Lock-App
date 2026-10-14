@@ -30,7 +30,21 @@ jobs:
             "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36.1' 'build-tools;36.0.0'
           fi
       - name: Test, lint and build debug APK
-        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
+        shell: bash
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug 2>&1 | tee "$RUNNER_TEMP/safelock-verify.log"
+      - name: Surface failure details in check annotations
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          log = Path(os.environ["RUNNER_TEMP"]) / "safelock-verify.log"
+          if log.exists():
+              excerpt = log.read_text(errors="replace")[-12000:]
+              escaped = excerpt.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title=Android verification failure::{escaped}")
+          PYTHON
       - name: Upload verification reports
         if: always()
         uses: actions/upload-artifact@v4
