@@ -65,7 +65,7 @@ jobs:
       CREATE_RELEASE: ${{ inputs.create_release || 'yes' }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Manual runs without a tag build the selected branch (normally main).
           # Tag-triggered runs always build the exact tag that triggered them.
