@@ -41,7 +41,7 @@ jobs:
           from pathlib import Path
           log = Path(os.environ["RUNNER_TEMP"]) / "safelock-verify.log"
           if log.exists():
-              excerpt = log.read_text(errors="replace")[-12000:]
+              excerpt = log.read_text(errors="replace")[-3500:]
               escaped = excerpt.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
               print(f"::error title=Android verification failure::{escaped}")
           PYTHON
