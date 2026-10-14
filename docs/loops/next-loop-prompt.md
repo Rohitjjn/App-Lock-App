@@ -1,11 +1,11 @@
 Current loop number: 2
-Previous loop state: Loop 1 completed as a bounded implementation; Android verification and exhaustive audit remain open.
+Previous loop state: Loop 1 completed as a bounded implementation; Android build/unit/lint checks passed; device verification and exhaustive audit remain open.
 
 # MASTER PROTOCOL — AUTONOMOUS CODEBASE EVOLUTION LOOP (v1)
 
- 
 
- 
+
+
 
 ## 1. MISSION
 
@@ -180,7 +180,7 @@ The next prompt must be fully self-contained, because I will paste it into a fre
 ## LOOP STATE (after Loop 1)
 
 - Loop number just completed: 1, on 2026-10-14.
-- Repository: Rohitjjn/App-Lock-App. Baseline 709eba714697c3acc43ff2a95fbe70124d63de82. Loop 1 branch: arena/a4df26fa-app-lock-app. Work on the branch assigned to the new session; inspect whether the prior PR is included before duplicating changes. Do not switch branches or merge without authorization.
+- Repository: Rohitjjn/App-Lock-App. Baseline 709eba714697c3acc43ff2a95fbe70124d63de82. Loop 1 branch: arena/a4df26fa-app-lock-app; draft PR https://github.com/Rohitjjn/App-Lock-App/pull/2. Work on the branch assigned to the new session; inspect whether the prior PR is included before duplicating changes. Do not switch branches or merge without authorization.
 - Team (reuse names and fields): Adrian Cole — Architecture & Code Audit; Daniel Mercer — QA & Reliability; Elena Voss — UI Design; Sofia Reyes — UX & Interaction; Marcus Reed — Product Strategy; Maya Chen — Security Architecture; Owen Brooks — Performance Engineering; Leila Haddad — Inclusive Privacy Design; Priya Nair — Test Automation & Delivery; Victor Hale — Code Quality & Documentation. These were fictional senior review lenses, not independently run agents; keep that disclosure honest.
 - App: native Kotlin/Compose Material3, manual Application DI, AndroidViewModel/Flow/Room repository, SQLCipher, EncryptedSharedPreferences. Root :app is active; assets/.aistudio is an old unbuilt source snapshot. minSdk28, target35, compile36.1, AGP9.1.1, Kotlin2.2.10, Gradle9.3.1. MainActivity hosts onboarding/settings; AppDetectorService polls UsageStats every100ms; LockActivity/LockScreen handle locks; LockSessionManager owns temporary sessions. INTERNET is already used by AutoUpdater's GitHub startup check; not offline-only. No telemetry added.
 - Audit: 24 consolidated findings (2 Critical,11 High,9 Medium,2 Low) in docs/loops/loop-1-report.md. Active data/service/util/theme/list/credential paths reviewed; only security-relevant Settings sections inspected. Decorative Settings/Onboarding/UserGuide sections, archive and historical docs NOT exhaustively read. Complete that audit; never claim Loop1 did a full line-by-line review.
@@ -197,14 +197,20 @@ Cumulative changelog, oldest first:
 9. 881859a: effective app light/dark theme propagated to lock controls.
 10. 347fd04: recovery failures count toward cooldown; persisted deadline checks for late successes; ceil countdown; pure tests.
 11. Loop1 docs: README actual architecture/privacy/release instructions, audit and30-proposal backlog, tracking-file annotations, self-contained next-loop prompt.
+12. c9c089d: use hosted Android SDK after SDK setup action failure.
+13. a2a6d99: snapshot async icon state before null checking (self-review correction).
+14. cb6df3f/e14d5cc: surface bounded failure diagnostics through check annotations when log-download hosts are blocked.
+15. 203b3c4: replace legacy back override with lifecycle dispatcher retaining secure-home behavior; add XML CI result reporter.
+16. 5488791: isolate pre-34 TileService API behind runtime guard and narrowly scoped lint exception; ignore Python cache artifacts.
+17. Final docs-only update: record successful Android CI run and complete handoff.
 
 Open issues / ranked backlog (paths relative to app/src/main/java/com/example unless noted):
-1. Verification and signing gate: .github/workflows/verify.yml:29; build-and-release.yml:45–65. Run Android build/lint/JUnit/device tests and validate upgrade with ORIGINAL certificate. Release secrets not configured in Loop1. Prior public keystore passwords must be changed securely; do not replace signing identity or uninstall users' data. Impact critical; effort M, risk High for signing.
-2. Detector lifecycle: service/AppDetectorService.kt:92,118–142 can race cache hydration and misses stable-foreground lock/timeout updates or suppressed launches. ui/LockActivity.kt:102 reads target only in onCreate despite manifest singleTask:55; no onNewIntent. Test readiness, rechecks and stale auth before atomic fixes. Impact high; M/L, High risk.
+1. Verification and signing gate: .github/workflows/verify.yml:29; build-and-release.yml:45–65. Keep Android build/lint/JUnit checks green, run device tests and validate upgrade with ORIGINAL certificate. Release secrets not configured in Loop1. Prior public keystore passwords must be changed securely; do not replace signing identity or uninstall users' data. Impact critical; effort M, risk High for signing.
+2. Detector lifecycle: service/AppDetectorService.kt:92,118–142 can race cache hydration and misses stable-foreground lock/timeout updates or suppressed launches. ui/LockActivity.kt:108 reads target only in onCreate despite manifest singleTask:55; no onNewIntent. Test readiness, rechecks and stale auth before atomic fixes. Impact high; M/L, High risk.
 3. Shared auth/recovery: ui/SettingsScreen.kt:1181,1613,1698,2727 remains unthrottled; MainActivity.kt:208–212 optional gate/session persists; LockScreen.kt:986–990 clears only PIN/pattern during recovery. Central persisted attempts and sensitive-action auth, coherent credential reset; wall-clock cooldown tampering still unresolved. Impact high; L, High risk.
 4. Weak fallback: data/local/EncryptedPrefs.kt:18–88 silently falls back to unencrypted preferences and device-XOR DB key. Design migration with fixtures for both stores, non-destructive error UI and explicit recovery; never regenerate DB key/delete prefs on failure. Impact high; L, High risk.
 5. Safe next wins: replace remembered auth executor (MainActivity.kt:232), test updater failure/cancel/install behavior (util/AutoUpdater.kt:63–118), forced themes (ui/theme/Theme.kt:58), row semantics (ui/AppListScreen.kt:437) and refresh states (MainViewModel.kt:135–205). M, Low/Medium risk.
-6. Privacy/performance: camera delayed callbacks (util/IntruderCameraHelper.kt:39–49), private but unencrypted photos/retention (same file:75–90), gallery and wallpaper full-size main-thread decode (ui/SettingsScreen.kt:2878; LockScreen.kt:1252), backup exclusions (res/xml/data_extraction_rules.xml:2). M/L, Medium/High risk; preserve photos.
+6. Privacy/performance: camera delayed callbacks (util/IntruderCameraHelper.kt:39–49), private but unencrypted photos/retention (same file:75–90), gallery and wallpaper full-size main-thread decode (ui/SettingsScreen.kt:2876; LockScreen.kt:1261), backup exclusions (res/xml/data_extraction_rules.xml:2). M/L, Medium/High risk; preserve photos.
 7. Crypto/supply chain: BiometricHelper.kt:103 omits CryptoObject; HashUtil.kt:11 retains 10000 iterations pending versioned KDF+benchmark; AutoUpdater.kt:121 lacks pre-install archive package/version/signer check. Pin Actions SHA and wrapper checksum. L, High risk for auth changes.
 8. Finish audit/docs/localization; schema export/explicit migration before bump (data/local/AppDatabase.kt:13,31). Existing dark mode was corrected, not newly added. Full30 reviewer proposals and deferred reasoning are in docs/loops/loop-1-report.md.
 
@@ -219,11 +225,11 @@ Constraints / lessons:
 Verification:
 - tools/run-core-checks.sh compiled/executed8 production-Kotlin regression groups: malformed/null hashes, independent legacy PBKDF2 vector, salts/roundtrips, defensive snapshots, concurrent snapshots(80000reads/10000writes), version ordering, invalid versions, cooldown boundaries.
 - Kotlin PSI syntax parsing and XML/YAML parsing passed; git diff --check passed. These are NOT Android type checking or runtime tests.
-- Initially no Java/SDK. Installed host-only jdk4py21.0.8.2 via PyPI and kotlin-compiler2.2.10 via npm. Gradle download from services.gradle.org failed SSL due sandbox allowlist. GitHub release-assets compiler download also blocked. Full Android dependencies/build/lint/JUnit, Robolectric session checks, Compose instrumentation, emulator/hardware tests and benchmarks remain unverified. Inspect actual GitHub PR checks before proceeding.
+- Initially no Java/SDK. Installed host-only jdk4py21.0.8.2 via PyPI and kotlin-compiler2.2.10 via npm. Gradle download from services.gradle.org failed SSL due sandbox allowlist. GitHub release-assets compiler download also blocked. GitHub-hosted verification subsequently PASSED at source/workflow commit5488791: https://github.com/Rohitjjn/App-Lock-App/actions/runs/38515638482. Debug assembly succeeded,10 Gradle JVM tests passed across5 suites(including2 Robolectric session tests),lint0errors/187other findings. Earlier SDK action failure was resolved using hosted ubuntu-24.04 SDK; earlier MissingSuperCall fixed with safe back dispatcher; remaining tile API lint was an already SDK-gated pre-34 path, now narrowly documented/guarded. KSP AWT cleanup errors appeared on earlier runs; no final-run annotation, investigate recurrence. Action runtime deprecation warnings remain. Compose instrumentation/AndroidTest compilation, emulator/hardware tests, signed release, original-key upgrades and benchmarks remain unverified. Final edits after5488791 are docs-only; inspect actual head checks rather than assuming the documentation rerun finished.
 
 ## THIS LOOP'S PRIORITY TASKS
 
-1. Read prior report/diff and inspect GitHub checks; confirm Loop1 changes are present. Run/fix Android verification first. No merge/release claim without evidence; note any existing build problems separately.
+1. Read prior report/diff and inspect GitHub checks; confirm Loop1 changes are present. Preserve the successful Android verification and address remaining lint warnings incrementally. No merge/release claim without evidence; note any existing build problems separately.
 2. Complete remaining file-by-file audit, reusing roster and reporting only read evidence. Use review personas honestly if no independent-agent tool exists.
 3. Add lifecycle regression coverage and make minimal fixes for detector cache readiness/stable-target reevaluation and LockActivity new-intent/stale-biometric handling. Do not rewrite detection blindly.
 4. Extend persistent auth throttling to settings and design non-destructive recovery with tests. Plan fallback-storage migration with compatibility fixtures before touching stored keys.

@@ -1,3 +1,6 @@
+## 2026-10-14 — Verification follow-up
+Android debug assembly, JVM tests(10) and lint now pass remotely.187 lint findings remain as warning/informational debt, plus deprecated Actions runtime notices. Earlier KSP AWT cleanup exceptions did not appear in final-run annotations; monitor recurrence. Device/release/remaining security issues below still apply. Evidence: run38515638482 at5488791. Final documentation-only push may trigger another CI run.
+
 ## 2026-10-14 — Current audit overrides historical status claims
 Source fixes and open issues F01–F24 are tracked in [Loop 1 report](docs/loops/loop-1-report.md). Remaining high-risk items: weak fallback prefs, detector hydration/stable-foreground rechecks, singleTask target updates, settings auth throttling and lifecycle reauthentication. Biometric CryptoObject, photo privacy/retention, recovery reset consistency and image decoding also remain open. Do not interpret old "Stable" or "Resolved" text as device verification of this branch.
 

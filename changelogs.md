@@ -1,3 +1,9 @@
+## 2026-10-14 — Verification follow-up
+- Changed: LockActivity secure-back handling now uses lifecycle dispatcher; SafeLockTileService isolates the pre-34 API behind an SDK guard with a targeted lint exception.
+- Changed: GitHub workflow uses hosted SDK, bounded log/XML diagnostics; asynchronous icon state read made stable for null checking.
+- Tested: GitHub run38515638482 passed testDebugUnitTest(10tests),lintDebug(0errors/187other findings),assembleDebug at5488791. Device tests/release upgrade unverified.
+- Related: docs/loops/loop-1-report.md. No new storage format/dependency.
+
 ## 2026-10-14 — Loop 1 security, reliability and app-list improvements
 - Version: existing application version unchanged; no data/schema migration.
 - Changed: hash/credential fail-closed handling, atomic session cache, detector scope cleanup, secure windows/camera consent, app-list refresh/accessibility/lazy icons, update retry/version validation, forced theme consistency and recovery cooldown checks.
