@@ -22,4 +22,7 @@
     <string name="auth_try_again">Too many attempts. Try again in %1$d seconds.</string>
     <string name="auth_incorrect">Incorrect credential. Please try again.</string>
     <string name="auth_wait">Authentication is temporarily paused.</string>
+    <string name="relock_apps">Lock apps again</string>
+    <string name="relock_done">Temporary unlocks cleared. Protected apps will ask you to authenticate again.</string>
+    <string name="relock_shield_off">Temporary unlocks cleared. Turn on App Shield to enforce your saved locks.</string>
 </resources>

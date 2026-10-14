@@ -25,4 +25,12 @@ class LockSessionManagerTest {
         assertTrue(LockSessionManager.isAppLocked("protected", 0))
         assertFalse(LockSessionManager.isLaunchPendingFor("pending"))
     }
+    @Test fun manualRelockPreservesSavedLockCache() {
+        LockSessionManager.updateLockedPackagesCache(setOf("protected"))
+        LockSessionManager.setAppUnlocked("protected")
+        LockSessionManager.clearSessions()
+        assertTrue(LockSessionManager.isAppLocked("protected", 0))
+        assertTrue(LockSessionManager.isPackageInLockedCache("protected"))
+        LockSessionManager.updateLockedPackagesCache(emptySet())
+    }
 }
