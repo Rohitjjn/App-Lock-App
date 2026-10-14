@@ -18,4 +18,5 @@
         <item quantity="one">%d locked app</item>
         <item quantity="other">%d locked apps</item>
     </plurals>
+    <string name="update_failed">Could not download or open the update. Check your connection and available storage, then try again.</string>
 </resources>

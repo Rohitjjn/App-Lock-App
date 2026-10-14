@@ -8,5 +8,7 @@ kotlinc app/src/main/java/com/example/util/HashUtil.kt \
   app/src/test/java/com/example/util/HashRegressionChecks.kt \
   app/src/main/java/com/example/util/LockedPackageCache.kt \
   app/src/test/java/com/example/util/CacheRegressionChecks.kt \
+  app/src/main/java/com/example/util/ReleaseVersion.kt \
+  app/src/test/java/com/example/util/VersionRegressionChecks.kt \
   tools/CoreCheckRunner.kt -include-runtime -d "$temp_dir/checks.jar"
 java -jar "$temp_dir/checks.jar"

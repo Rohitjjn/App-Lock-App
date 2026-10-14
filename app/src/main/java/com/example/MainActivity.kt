@@ -114,6 +114,7 @@ class MainActivity : FragmentActivity() {
         var updateInfo by remember { mutableStateOf<com.example.util.AutoUpdater.UpdateInfo?>(null) }
         var isDownloadingUpdate by remember { mutableStateOf(false) }
         var downloadProgress by remember { mutableStateOf(0) }
+        var updateFailed by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
 
         LaunchedEffect(Unit) {
@@ -132,6 +133,12 @@ class MainActivity : FragmentActivity() {
                         Text("Version ${updateInfo!!.version} is available for download.")
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(updateInfo!!.releaseNotes, fontSize = 13.sp)
+                        if (updateFailed) {
+                            Text(
+                                androidx.compose.ui.res.stringResource(R.string.update_failed),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                         if (isDownloadingUpdate) {
                             Spacer(modifier = Modifier.height(16.dp))
                             LinearProgressIndicator(
@@ -145,10 +152,19 @@ class MainActivity : FragmentActivity() {
                 confirmButton = {
                     Button(
                         onClick = {
+                            val downloadUrl = updateInfo?.downloadUrl ?: return@Button
                             isDownloadingUpdate = true
+                            updateFailed = false
+                            downloadProgress = 0
                             scope.launch {
-                                com.example.util.AutoUpdater.downloadAndInstall(context, updateInfo!!.downloadUrl) { progress ->
-                                    downloadProgress = progress
+                                try {
+                                    val openedInstaller = com.example.util.AutoUpdater.downloadAndInstall(context, downloadUrl) { progress ->
+                                        downloadProgress = progress
+                                    }
+                                    updateFailed = !openedInstaller
+                                    if (openedInstaller) updateInfo = null
+                                } finally {
+                                    isDownloadingUpdate = false
                                 }
                             }
                         },
