@@ -19,4 +19,6 @@
         <item quantity="other">%d locked apps</item>
     </plurals>
     <string name="update_failed">Could not download or open the update. Check your connection and available storage, then try again.</string>
+    <string name="auth_try_again">Too many attempts. Try again in %1$d seconds.</string>
+    <string name="auth_incorrect">Incorrect credential. Please try again.</string>
 </resources>

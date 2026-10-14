@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.widget.Toast
 import com.example.AppLockApplication
-import com.example.util.CooldownPolicy
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -75,9 +74,9 @@ fun LockScreen(
     val encryptedPrefs = app.encryptedPrefs
 
     // Cooldown verification state
-    var wrongAttemptsCount by remember { mutableStateOf(encryptedPrefs.getWrongAttempts()) }
+    val authAttempts = encryptedPrefs.authAttempts
     var cooldownSecondsRemaining by remember {
-        mutableStateOf(CooldownPolicy.remainingSeconds(encryptedPrefs.getCooldownEndTime(), System.currentTimeMillis()))
+        mutableStateOf(authAttempts.remainingSeconds())
     }
     var showResetDialog by remember { mutableStateOf(false) }
 
@@ -92,17 +91,7 @@ fun LockScreen(
     // Cooldown live countdown ticks
     LaunchedEffect(Unit) {
         while (true) {
-            val now = System.currentTimeMillis()
-            val cooldownEnd = encryptedPrefs.getCooldownEndTime()
-            if (cooldownEnd > now) {
-                cooldownSecondsRemaining = CooldownPolicy.remainingSeconds(cooldownEnd, now)
-            } else {
-                cooldownSecondsRemaining = 0L
-                if (encryptedPrefs.getWrongAttempts() >= 3) {
-                    encryptedPrefs.setWrongAttempts(0)
-                    wrongAttemptsCount = 0
-                }
-            }
+            cooldownSecondsRemaining = authAttempts.remainingSeconds()
             delay(1000)
         }
     }
@@ -134,19 +123,13 @@ fun LockScreen(
     }
 
     val onFailedAttempt = failedAttempt@ {
-        if (CooldownPolicy.isActive(encryptedPrefs.getCooldownEndTime(), System.currentTimeMillis())) {
-            return@failedAttempt
-        }
-        val nextCount = wrongAttemptsCount + 1
-        wrongAttemptsCount = nextCount
-        encryptedPrefs.setWrongAttempts(nextCount)
+        val nextCount = authAttempts.recordFailure()
+        if (nextCount == 0) return@failedAttempt
         if (nextCount == 2 && encryptedPrefs.isIntruderSelfieEnabled()) {
             com.example.util.IntruderCameraHelper.prepareCamera(context, lifecycleOwner)
         }
         if (nextCount >= 3) {
-            val endCooldown = System.currentTimeMillis() + 30000 // 30 sec cooldown
-            encryptedPrefs.setCooldownEndTime(endCooldown)
-            cooldownSecondsRemaining = 30
+            cooldownSecondsRemaining = authAttempts.remainingSeconds()
             
             // Capture background silent front camera selfie of intruder within 3 seconds
             if (encryptedPrefs.isIntruderSelfieEnabled()) {
@@ -475,12 +458,10 @@ fun LockScreen(
 
     val handleMethodUnlockSuccess = unlock@ {
         // Re-check persisted state, not the potentially stale countdown UI or biometric callback.
-        if (CooldownPolicy.isActive(encryptedPrefs.getCooldownEndTime(), System.currentTimeMillis())) {
+        if (!authAttempts.acceptSuccess()) {
             return@unlock
         }
         com.example.util.IntruderCameraHelper.releaseCamera()
-        wrongAttemptsCount = 0
-        encryptedPrefs.setWrongAttempts(0)
 
         if (isMultiLock) {
             if (currentStepIndex < availableMethods.size - 1) {
@@ -972,7 +953,7 @@ fun LockScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (CooldownPolicy.isActive(encryptedPrefs.getCooldownEndTime(), System.currentTimeMillis())) {
+                        if (authAttempts.remainingSeconds() > 0) {
                             showResetDialog = false
                             return@Button
                         }
@@ -982,7 +963,7 @@ fun LockScreen(
                             return@Button
                         }
                         val matched = com.example.util.HashUtil.verify(cleanedVal, q.answerHash)
-                        if (matched) {
+                        if (matched && authAttempts.acceptSuccess()) {
                             encryptedPrefs.clearPinHash()
                             encryptedPrefs.clearPatternHash()
                             Toast.makeText(context, "Lock Reset Successful! Security turned off.", Toast.LENGTH_LONG).show()
@@ -991,7 +972,7 @@ fun LockScreen(
                         } else {
                             onFailedAttempt()
                             errorMsg = "Incorrect answer. Please try again."
-                            if (encryptedPrefs.getCooldownEndTime() > System.currentTimeMillis()) {
+                            if (authAttempts.remainingSeconds() > 0) {
                                 showResetDialog = false
                             }
                         }
