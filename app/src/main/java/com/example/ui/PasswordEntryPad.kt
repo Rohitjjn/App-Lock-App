@@ -92,7 +92,7 @@ fun PasswordEntryPad(
 
     val isDark = com.example.ui.theme.LocalDarkTheme.current
     val accentColor = com.example.ui.theme.LocalAccentColor.current
-    val textColor = if (isDark) Color.White else Color.Black
+    val textColor = MaterialTheme.colorScheme.onBackground
 
     val passwordIconColor = accentColor
     val passwordTextColor = accentColor
@@ -217,7 +217,7 @@ fun PasswordEntryPad(
             shape = androidx.compose.foundation.shape.CircleShape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = passwordUnlockButtonColor,
-                contentColor = if (isDark) Color.Black else Color.White
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
             Text(

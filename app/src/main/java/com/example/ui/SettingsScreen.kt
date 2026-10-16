@@ -386,25 +386,7 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "SETTINGS",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.testTag("settings_title")
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         val scrollState = rememberScrollState()
         Column(
@@ -413,20 +395,33 @@ fun SettingsScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            PageEyebrow(text = "YOUR SPACE")
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.testTag("settings_title")
+            )
+            Text(
+                text = "Make protection feel like yours.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
 
             // 0. App Shield Configuration Group
-            CategoryHeading(text = "APP SHIELD MASTER SWITCH")
+            CategoryHeading(text = "App shield")
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                shape = RoundedCornerShape(8.dp)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = MaterialTheme.shapes.large
             ) {
                 SettingsSwitchRow(
                     title = "App Shield Protection",
@@ -443,10 +438,10 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                shape = RoundedCornerShape(8.dp)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = MaterialTheme.shapes.large
             ) {
                 Column {
                     // Lock Method Selectors Row
@@ -530,10 +525,10 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                shape = RoundedCornerShape(8.dp)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = MaterialTheme.shapes.large
             ) {
                 Column {
                     // Security Question Config Link
@@ -598,10 +593,10 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                shape = RoundedCornerShape(8.dp)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = MaterialTheme.shapes.large
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -671,10 +666,10 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                shape = RoundedCornerShape(8.dp)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = MaterialTheme.shapes.large
             ) {
                 Column {
                     // Change Theme
@@ -791,9 +786,9 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth().testTag("help_guide_card"),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialTheme.shapes.large,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 SettingsActionRow(
@@ -810,9 +805,9 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialTheme.shapes.large,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(
@@ -821,24 +816,21 @@ fun SettingsScreen(
                         .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Security,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(36.dp)
+                    SafeLockMark(
+                        modifier = Modifier.size(42.dp),
+                        contentDescription = "SafeLock"
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "App Lock Console",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        text = "SafeLock",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "v2.0.0 — Stable Build",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        text = "Your personal app protection",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Surface(
@@ -1208,13 +1200,12 @@ fun UninstallProtectionVerifyDialog(
 // Subordinate widgets definitions
 @Composable
 fun CategoryHeading(text: String) {
-    Text(
-        text = text,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 1.sp,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 6.dp, bottom = 6.dp)
+    val heading = text.lowercase().split(" ").joinToString(" ") { word ->
+        word.replaceFirstChar { first -> first.uppercase() }
+    }
+    SettingsSectionTitle(
+        text = heading,
+        modifier = Modifier.padding(top = 2.dp, bottom = 1.dp)
     )
 }
 
@@ -1229,37 +1220,51 @@ fun SettingsActionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
             .clickable { onClick() }
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
             .testTag(tag),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                .size(42.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(21.dp)
             )
         }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2
+            )
         }
 
+        Spacer(modifier = Modifier.width(8.dp))
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -1276,32 +1281,44 @@ fun SettingsSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
             .testTag(tag),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                .size(42.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(21.dp)
             )
         }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2
+            )
         }
 
+        Spacer(modifier = Modifier.width(8.dp))
         Switch(
             checked = isChecked,
             onCheckedChange = onCheckedChange,
@@ -2242,10 +2259,6 @@ fun AccentColorSelectorDialog(
     onDismiss: () -> Unit
 ) {
     val accentColor = com.example.ui.theme.LocalAccentColor.current
-    // Dynamic theme selection depending on background color luminance
-    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background.run {
-        0.299f * red + 0.587f * green + 0.114f * blue
-    } < 0.5f
     val options = listOf(
         "Default" to "Default (Theme Default)",
         "#FFFF7A17" to "Claude Orange",
@@ -2274,7 +2287,7 @@ fun AccentColorSelectorDialog(
                 options.forEach { option ->
                     val colorObj = try {
                         if (option.first == "Default") {
-                            if (isDark) Color.White else Color.Black
+                            accentColor
                         } else {
                             Color(android.graphics.Color.parseColor(option.first))
                         }

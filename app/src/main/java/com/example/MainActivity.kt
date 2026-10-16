@@ -333,36 +333,71 @@ class MainActivity : FragmentActivity() {
             }
         }
 
+        val lockedCount by viewModel.lockedAppCount.collectAsStateWithLifecycle()
         Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
-                NavigationBar(
-                    modifier = Modifier.testTag("main_bottom_nav"),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                ) {
-                    NavigationBarItem(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        label = { Text("App List") },
-                        icon = {
-                            Icon(
-                                imageVector = if (selectedTab == 0) Icons.Filled.Lock else Icons.Outlined.Lock,
-                                contentDescription = "App list protection tab"
-                            )
-                        },
-                        modifier = Modifier.testTag("tab_app_list")
+                Column {
+                    androidx.compose.material3.HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
                     )
-                    NavigationBarItem(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        label = { Text("Settings") },
-                        icon = {
-                            Icon(
-                                imageVector = if (selectedTab == 1) Icons.Filled.Settings else Icons.Outlined.Settings,
-                                contentDescription = "Security and locks settings tab"
-                            )
-                        },
-                        modifier = Modifier.testTag("tab_settings")
-                    )
+                    NavigationBar(
+                        modifier = Modifier.testTag("main_bottom_nav"),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 2.dp
+                    ) {
+                        NavigationBarItem(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            label = { Text("Apps") },
+                            icon = {
+                                androidx.compose.material3.BadgedBox(
+                                    badge = {
+                                        if (lockedCount > 0) {
+                                            androidx.compose.material3.Badge(
+                                                containerColor = MaterialTheme.colorScheme.primary,
+                                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                            ) {
+                                                Text(lockedCount.toString())
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (selectedTab == 0) Icons.Filled.Lock else Icons.Outlined.Lock,
+                                        contentDescription = "App list protection tab"
+                                    )
+                                }
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.testTag("tab_app_list")
+                        )
+                        NavigationBarItem(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            label = { Text("Settings") },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selectedTab == 1) Icons.Filled.Settings else Icons.Outlined.Settings,
+                                    contentDescription = "Security and locks settings tab"
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.testTag("tab_settings")
+                        )
+                    }
                 }
             }
         ) { innerPadding ->
@@ -371,10 +406,11 @@ class MainActivity : FragmentActivity() {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                if (selectedTab == 0) {
-                    AppListScreen(viewModel = viewModel)
-                } else {
-                    SettingsScreen(viewModel = viewModel)
+                Crossfade(targetState = selectedTab, label = "primary_tab_transition") { tab ->
+                    when (tab) {
+                        0 -> AppListScreen(viewModel = viewModel)
+                        else -> SettingsScreen(viewModel = viewModel)
+                    }
                 }
             }
         }
@@ -761,9 +797,11 @@ class MainActivity : FragmentActivity() {
                 .fillMaxWidth()
                 .testTag(testTag),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                containerColor = MaterialTheme.colorScheme.surface
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = MaterialTheme.shapes.large,
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
                 modifier = Modifier.padding(14.dp)
@@ -779,23 +817,10 @@ class MainActivity : FragmentActivity() {
                         fontWeight = FontWeight.Bold
                     )
 
-                    // Status pill
-                    val pillColor = if (isActive) Color(0xFF2E7D32) else Color(0xFFC62828)
-                    val textPillColor = Color.White
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(pillColor)
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = if (isActive) activeLabel else inactiveLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = textPillColor,
-                            fontSize = 10.sp
-                        )
-                    }
+                    ProtectionStatusPill(
+                        label = if (isActive) activeLabel else inactiveLabel,
+                        positive = isActive
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -823,42 +848,55 @@ class MainActivity : FragmentActivity() {
                 .fillMaxWidth()
                 .clickable { onClick() }
                 .testTag(tag),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
-            ),
-            shape = RoundedCornerShape(10.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = MaterialTheme.shapes.large,
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Row(
                 modifier = Modifier
-                    .padding(12.dp)
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(21.dp)
+                    )
+                }
                 Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (description != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = description,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            fontSize = 11.sp
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
                         )
                     }
                 }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

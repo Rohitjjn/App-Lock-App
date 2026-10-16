@@ -60,7 +60,7 @@ fun UserGuideView(
     onDismiss: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("❓ How It Works", "🛡️ Feature Directory", "⚙️ Setup Guidelines")
+    val tabs = listOf("Overview", "Features", "Setup")
 
     Scaffold(
         modifier = Modifier
@@ -179,7 +179,7 @@ fun GuideHeaderCard(tabIndex: Int) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
     ) {
         Row(
@@ -226,21 +226,21 @@ fun IntroTabContent() {
         DetailGuideCard(
             title = "1. SafeLock Overview",
             icon = Icons.Default.Info,
-            color = Color(0xFF00AA5B),
+            color = MaterialTheme.colorScheme.secondary,
             descriptionText = stringResource(R.string.guide_overview)
         )
 
         DetailGuideCard(
             title = "2. Background Intercept Engine",
             icon = Icons.Default.Memory,
-            color = Color(0xFF2E86DE),
+            color = MaterialTheme.colorScheme.primary,
             descriptionText = stringResource(R.string.guide_detector)
         )
 
         DetailGuideCard(
             title = "3. Active Session Retention",
             icon = Icons.Default.CheckCircle,
-            color = Color(0xFFFA8231),
+            color = MaterialTheme.colorScheme.tertiary,
             descriptionText = stringResource(R.string.guide_sessions)
         )
     }
@@ -250,30 +250,30 @@ fun IntroTabContent() {
 fun FeaturesManualTabContent() {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         DetailGuideCard(
-            title = "🎮 App Protection Hub",
+            title = "App Protection Hub",
             icon = Icons.Default.AppShortcut,
-            color = Color(0xFF10AC84),
-            descriptionText = "Toggle security guards on individual packages. Simply head over to the main screen, use the search block to filter apps, and click the lock toggle. Secured apps are styled with bright green indicators."
+            color = MaterialTheme.colorScheme.secondary,
+            descriptionText = "Toggle security guards on individual packages. Simply head over to the main screen, use the search block to filter apps, and click the lock toggle. Protected apps are marked with a warm accent."
         )
 
         DetailGuideCard(
-            title = "🔑 Local Credentials Hashing",
+            title = "Local credential security",
             icon = Icons.Default.LockOpen,
-            color = Color(0xFF9B5DE5),
+            color = MaterialTheme.colorScheme.primary,
             descriptionText = stringResource(R.string.guide_hashing)
         )
 
         DetailGuideCard(
-            title = "👆 Relocated Biometric Trigger",
+            title = "Biometric unlock",
             icon = Icons.Default.Fingerprint,
-            color = Color(0xFFE94560),
+            color = MaterialTheme.colorScheme.tertiary,
             descriptionText = stringResource(R.string.guide_biometrics)
         )
 
         DetailGuideCard(
-            title = "📸 Silent Intruder Camera Selfie",
+            title = "Intruder photo log",
             icon = Icons.Default.CameraAlt,
-            color = Color(0xFFE2C35D),
+            color = MaterialTheme.colorScheme.secondary,
             descriptionText = stringResource(R.string.guide_camera)
         )
     }
@@ -286,7 +286,7 @@ fun SetupFixesTabContent() {
             stepNumber = "STEP 1",
             title = "Configure Usage Access",
             icon = Icons.Default.SystemUpdateAlt,
-            color = Color(0xFFE94560),
+            color = MaterialTheme.colorScheme.tertiary,
             instructions = "1. Go to Settings and tap 'CLICK HERE TO CONFIGURE SYSTEM ACCESS'.\n2. Locate 'SafeLock' under the Installed Apps list.\n3. Turn the service switch ON to grant core launch-intercept capabilities.",
             importanceFocus = "Crucial Requirement! Usage Access serves as the core intercept mechanism. Without this granted permission, SafeLock cannot block application launches."
         )
@@ -295,7 +295,7 @@ fun SetupFixesTabContent() {
             stepNumber = "STEP 2",
             title = "Secure Settings App First",
             icon = Icons.Default.SettingsSuggest,
-            color = Color(0xFFFF9F43),
+            color = MaterialTheme.colorScheme.primary,
             instructions = "1. Open the primary App Lock security list.\n2. Locate the native system 'Settings' application.\n3. Click to LOCK 'Settings' immediately.",
             importanceFocus = stringResource(R.string.guide_settings_limit)
         )
@@ -304,7 +304,7 @@ fun SetupFixesTabContent() {
             stepNumber = "STEP 3",
             title = "Realme & OEM Auto-Start Guide",
             icon = Icons.Default.Bolt,
-            color = Color(0xFF2E86DE),
+            color = MaterialTheme.colorScheme.primary,
             instructions = "1. Scroll down Settings to locate the Realme/Oem custom guide trigger.\n2. Click the background auto-start guide option.\n3. Turn ON explicit auto-start permission toggles for SafeLock.",
             importanceFocus = "Essential for Narzo N53 and heavy Custom OS layers (ColorOS/Xiaomi) to keep intercepts active upon device reboots."
         )
@@ -320,11 +320,11 @@ fun DetailGuideCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -369,9 +369,9 @@ fun SetupStepWidget(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
     ) {

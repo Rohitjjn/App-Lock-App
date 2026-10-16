@@ -1,6 +1,5 @@
 package com.example.ui
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -32,17 +31,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.example.R
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.example.MainActivity
 import com.example.util.RealmeOemHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -60,115 +58,85 @@ fun SplashScreenContent(
     isFirstLaunch: Boolean,
     onTransition: (AppScreenState) -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val alphaAnim by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.95f,
+    val transition = rememberInfiniteTransition(label = "splash_mark")
+    val markScale by transition.animateFloat(
+        initialValue = 0.97f,
+        targetValue = 1.03f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
+            animation = tween(1_500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "alpha"
+        label = "splash_mark_scale"
     )
 
     LaunchedEffect(Unit) {
-        val delayMs = if (isFirstLaunch) 1600L else 1200L
-        delay(delayMs)
-        if (isFirstLaunch) {
-            onTransition(AppScreenState.INTRO)
-        } else {
-            onTransition(AppScreenState.MAIN)
-        }
+        delay(if (isFirstLaunch) 1_500L else 900L)
+        onTransition(if (isFirstLaunch) AppScreenState.INTRO else AppScreenState.MAIN)
     }
-
-    val isDark = MaterialTheme.colorScheme.background == com.example.ui.theme.XaiCanvas
-    val gradientColors = if (isDark) {
-        listOf(Color(0xFF0A0A0A), Color(0xFF191919), Color(0xFF0A0A0A))
-    } else {
-        listOf(Color(0xFFF9F9FB), Color(0xFFEDEDF0), Color(0xFFF9F9FB))
-    }
-    val cardBgColor = if (isDark) Color(0xFF191919) else Color(0xFFFFFFFF)
-    val titleColor = if (isDark) Color.White else Color(0xFF0A0A0A)
-    val descColor = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF0A0A0A).copy(alpha = 0.6f)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(colors = gradientColors)),
+            .background(MaterialTheme.colorScheme.background)
+            .systemBarsPadding(),
         contentAlignment = Alignment.Center
     ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 35.dp, end = 6.dp)
+                .size(190.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 12.dp, bottom = 34.dp)
+                .size(150.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.42f))
+        )
+
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Premium Badge with subtle breathing aura glow
-            Box(
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shape = MaterialTheme.shapes.extraLarge,
+                shadowElevation = 8.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier
-                    .size(84.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f * alphaAnim),
-                                Color.Transparent
-                            )
-                        )
-                    )
-                    .border(
-                        1.5.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                        RoundedCornerShape(22.dp)
-                    )
-                    .background(cardBgColor),
-                contentAlignment = Alignment.Center
+                    .size(104.dp)
+                    .graphicsLayer { scaleX = markScale; scaleY = markScale }
             ) {
-                Icon(
-                    imageVector = Icons.Default.Security,
-                    contentDescription = "SafeLock Logo",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(42.dp)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    SafeLockMark(
+                        modifier = Modifier.size(58.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                        contentDescription = "SafeLock shield"
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-
             Text(
-                text = "SafeLock Shield",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.5.sp
-                ),
-                color = titleColor
+                text = "SafeLock",
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onBackground
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Active Device Privacy Security",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = 0.8.sp
-                ),
-                color = descColor
+                text = "A little more peace of mind.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
-        }
-
-        // Bottom tagline branding
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 42.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Secured Protocol v2.5",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 2.5.sp
-                ),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            )
+            Spacer(modifier = Modifier.height(30.dp))
+            PageEyebrow(text = "PRIVATE BY DESIGN")
         }
     }
 }
@@ -180,25 +148,24 @@ fun IntroScreensContent(
 ) {
     val pagerState = rememberPagerState(pageCount = { 3 })
     val coroutineScope = rememberCoroutineScope()
-
     val introPages = listOf(
         IntroPageData(
-            title = "Proactive Shield",
+            title = "A thoughtful little shield",
             description = stringResource(R.string.intro_protection),
-            icon = Icons.Default.LockClock,
+            icon = Icons.Default.Shield,
             colorAccent = MaterialTheme.colorScheme.primary
         ),
         IntroPageData(
-            title = "Intruder Alert Log",
+            title = "Know when someone tries",
             description = stringResource(R.string.intro_camera),
             icon = Icons.Default.CameraAlt,
-            colorAccent = com.example.ui.theme.LocalAccentColor.current
+            colorAccent = MaterialTheme.colorScheme.tertiary
         ),
         IntroPageData(
-            title = "Dynamic Sequences",
-            description = "Chain multiple locks together or use individual configurations. Customize your priority sequence to meet exact security desires.",
-            icon = Icons.Default.Dashboard,
-            colorAccent = MaterialTheme.colorScheme.tertiary
+            title = "Protection that fits you",
+            description = "Choose one unlock method or combine a few. Your security should work the way you do.",
+            icon = Icons.Default.Fingerprint,
+            colorAccent = MaterialTheme.colorScheme.secondary
         )
     )
 
@@ -206,9 +173,22 @@ fun IntroScreensContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(18.dp)
+            .systemBarsPadding()
+            .padding(horizontal = 22.dp, vertical = 16.dp)
     ) {
-        // Page view Pager
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SafeLockMark(modifier = Modifier.size(26.dp), contentDescription = null)
+            Spacer(modifier = Modifier.width(9.dp))
+            Text("SafeLock", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(onClick = onFinished) {
+                Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
@@ -219,137 +199,92 @@ fun IntroScreensContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Feature Visual Card
-                Box(
-                    modifier = Modifier
-                        .size(170.dp)
-                        .clip(RoundedCornerShape(36.dp))
-                        .background(pageData.colorAccent.copy(alpha = 0.08f))
-                        .border(1.dp, pageData.colorAccent.copy(alpha = 0.2f), RoundedCornerShape(36.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(110.dp)
-                            .clip(CircleShape)
-                            .background(pageData.colorAccent.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = pageData.icon,
-                            contentDescription = null,
-                            tint = pageData.colorAccent,
-                            modifier = Modifier.size(54.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(38.dp))
-
+                FeatureIllustration(
+                    icon = pageData.icon,
+                    accent = pageData.colorAccent,
+                    modifier = Modifier.size(196.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                PageEyebrow(text = "A SAFER EVERYDAY")
+                Spacer(modifier = Modifier.height(11.dp))
                 Text(
                     text = pageData.title,
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontFamily = FontFamily.SansSerif,
-                        letterSpacing = 0.5.sp
-                    ),
+                    style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center
                 )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = pageData.description,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        lineHeight = 22.sp,
-                        letterSpacing = 0.2.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    lineHeight = 25.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                    modifier = Modifier.padding(horizontal = 10.dp)
                 )
             }
         }
 
-        // Navigation Footer controls
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp, start = 8.dp, end = 8.dp),
+                .padding(bottom = 12.dp, start = 4.dp, end = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // dots indicator
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 repeat(3) { index ->
-                    val isSelected = pagerState.currentPage == index
-                    val widthAnim by animateDpAsState(
-                        targetValue = if (isSelected) 24.dp else 8.dp,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                    val selected = pagerState.currentPage == index
+                    val width by animateDpAsState(
+                        targetValue = if (selected) 24.dp else 7.dp,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "intro_page_dot"
                     )
                     Box(
                         modifier = Modifier
-                            .height(8.dp)
-                            .width(widthAnim)
+                            .height(7.dp)
+                            .width(width)
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outlineVariant
                             )
                     )
                 }
             }
 
-            // Buttons
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (pagerState.currentPage > 0) {
                     TextButton(
                         onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                            }
+                            coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
                         }
                     ) {
-                        Text(
-                            text = "Back",
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Text("Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-
                 Button(
                     onClick = {
                         if (pagerState.currentPage < 2) {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                            }
-                        } else {
-                            onFinished()
-                        }
+                            coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                        } else onFinished()
                     },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    modifier = Modifier.height(48.dp)
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 13.dp)
                 ) {
-                    Text(
-                        text = if (pagerState.currentPage == 2) "Get Started" else "Next",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text(if (pagerState.currentPage == 2) "Continue" else "Next")
+                    Spacer(modifier = Modifier.width(7.dp))
+                    Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(17.dp))
                 }
             }
         }
@@ -438,51 +373,42 @@ fun OnboardingPermissionsScreenContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .systemBarsPadding()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(20.dp)
-                .padding(bottom = 80.dp), // space for bottom footer skip/continue
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .padding(bottom = 90.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Section Header
-            Icon(
-                imageVector = Icons.Default.Security,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(54.dp)
+            FeatureIllustration(
+                icon = Icons.Default.Shield,
+                modifier = Modifier.size(132.dp)
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
+            Spacer(modifier = Modifier.height(5.dp))
+            PageEyebrow(text = "ONE LAST STEP")
+            Spacer(modifier = Modifier.height(9.dp))
             Text(
-                text = "Secure Authorizations",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = FontFamily.SansSerif
-                ),
-                color = MaterialTheme.colorScheme.onBackground
+                text = "Give SafeLock the access it needs",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
+            Spacer(modifier = Modifier.height(7.dp))
             Text(
-                text = "SafeLock requires configuration parameters to block app launches and protect system workflows.",
+                text = "A couple of Android permissions help your shield recognize when a protected app opens.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
-
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Cards section
+            // Required access is explained before each Android settings hand-off.
             Text(
-                text = "MANDATORY PERMISSIONS (CRITICAL)",
+                text = "REQUIRED ACCESS",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -558,9 +484,9 @@ fun OnboardingPermissionsScreenContent(
             )
 
             Text(
-                text = "OPTIONAL SERVICES (CAN BE SKIPPED)",
+                text = "OPTIONAL FEATURES",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.Start).padding(bottom = 10.dp)
             )
@@ -614,7 +540,7 @@ fun OnboardingPermissionsScreenContent(
             ) {
                 if (!mandatoryPermissionsActive) {
                     Text(
-                        text = "ℹ️ Enable premium permissions above, or press Continue to begin configuring locks",
+                        text = "Usage access and display-over-apps are needed for locking to work. You can continue setup now.",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = FontWeight.Medium,
                             fontSize = 11.sp
@@ -624,12 +550,12 @@ fun OnboardingPermissionsScreenContent(
                     )
                 } else {
                     Text(
-                        text = "✨ All mandatory permissions are completed!",
+                        text = "All required access is ready. Your shield is good to go.",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 11.sp
                         ),
-                        color = Color(0xFF2E7D32),
+                        color = MaterialTheme.colorScheme.secondary,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -638,12 +564,12 @@ fun OnboardingPermissionsScreenContent(
                     onClick = {
                         onFinished()
                     },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
-                    modifier = Modifier.fillMaxWidth().height(48.dp).testTag("onboarding_continue")
+                    modifier = Modifier.fillMaxWidth().height(54.dp).testTag("onboarding_continue")
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -675,75 +601,76 @@ fun PermissionCard(
     onClick: () -> Unit,
     accentColor: Color
 ) {
+    val cardColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        animationSpec = tween(220),
+        label = "permission_card_color"
+    )
+    val borderColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (isActive) accentColor.copy(alpha = 0.32f) else MaterialTheme.colorScheme.outlineVariant,
+        animationSpec = tween(220),
+        label = "permission_border_color"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .border(
-                1.dp,
-                if (isActive) accentColor.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outline,
-                RoundedCornerShape(8.dp)
-            )
+            .clip(MaterialTheme.shapes.large)
+            .border(1.dp, borderColor, MaterialTheme.shapes.large)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) accentColor.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant
-        )
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
             Box(
                 modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(if (isActive) accentColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isActive) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                     imageVector = icon,
-                     contentDescription = null,
-                     tint = if (isActive) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                     modifier = Modifier.size(24.dp)
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (isActive) MaterialTheme.colorScheme.secondary else accentColor,
+                    modifier = Modifier.size(23.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Body
+            Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    lineHeight = 15.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 17.sp
                 )
             }
-
             Spacer(modifier = Modifier.width(8.dp))
-
-            // Indicator pill or arrow
             if (isActive) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Active",
-                    tint = Color(0xFF2E7D32),
-                    modifier = Modifier.size(24.dp)
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(22.dp)
                 )
             } else {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Authorize Trigger",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(24.dp)
+                    contentDescription = "Open permission settings",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }

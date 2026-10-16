@@ -271,7 +271,7 @@ fun LockScreen(
     val accentColor = remember(defaultAccentColor, isDark) {
         resolveCustomColor("Default", defaultAccentColor)
     }
-    val textColor = if (isDark) Color.White else Color.Black
+    val textColor = MaterialTheme.colorScheme.onBackground
 
     val clockFont = getPrefString("lock_clock_font", "System")
     val clockWeight = getPrefString("lock_clock_weight", "Bold")
@@ -320,20 +320,18 @@ fun LockScreen(
 
     val isGlass = liquidGlassLook != "None"
 
-    val bgGradient = remember(bgMixType, bgSliderColorHex, isDark) {
+    val themeBackground = MaterialTheme.colorScheme.background
+    val themeSurface = MaterialTheme.colorScheme.surface
+    val bgGradient = remember(bgMixType, bgSliderColorHex, isDark, themeBackground, themeSurface) {
         if (bgMixType == "Custom Color" && bgSliderColorHex.isNotEmpty() && bgSliderColorHex != "Default") {
             val customCol = try {
                 Color(android.graphics.Color.parseColor(bgSliderColorHex))
             } catch (e: Exception) {
-                if (isDark) Color(0xFF0A0A0A) else Color(0xFFFFFFFF)
+                themeBackground
             }
             Brush.verticalGradient(listOf(customCol, customCol))
         } else {
-            if (isDark) {
-                Brush.verticalGradient(listOf(Color(0xFF0A0A0A), Color(0xFF0A0A0A)))
-            } else {
-                Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFFFFFFF)))
-            }
+            Brush.verticalGradient(listOf(themeBackground, themeSurface))
         }
     }
 
@@ -511,7 +509,7 @@ fun LockScreen(
     }
 
     androidx.compose.runtime.CompositionLocalProvider(com.example.ui.theme.LocalAccentColor provides accentColor) {
-        ProvideTextStyle(value = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)) {
+        ProvideTextStyle(value = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)) {
             Box(
                 modifier = modifier
                     .fillMaxSize()
@@ -533,7 +531,7 @@ fun LockScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer { alpha = 0.15f }
-                    .background(Color.White)
+                    .background(themeSurface.copy(alpha = 0.42f))
                     .blur(20.dp)
             )
         }
@@ -625,8 +623,7 @@ fun LockScreen(
                                     .testTag("locked_app_icon")
                             )
                         } else {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
+                            SafeLockMark(
                                 contentDescription = null,
                                 tint = allLocksColor,
                                 modifier = Modifier.size(40.dp)
