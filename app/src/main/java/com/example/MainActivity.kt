@@ -44,6 +44,7 @@ import com.example.service.KeepAliveService
 import com.example.ui.AppListScreen
 import com.example.ui.MainViewModel
 import com.example.ui.SettingsScreen
+import com.example.ui.ProtectionStatusPill
 import com.example.ui.AppScreenState
 import com.example.ui.SplashScreenContent
 import com.example.ui.IntroScreensContent
