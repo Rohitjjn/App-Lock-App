@@ -2,48 +2,67 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// xAI Design Tokens (The "engineered-cosmic" near-black canvas)
-val XaiCanvas = Color(0xFF0A0A0A)       // Near-black page background
-val XaiCanvasSoft = Color(0xFF1A1C20)   // Lighter dark fill for hovered/pressed items
-val XaiCanvasCard = Color(0xFF191919)   // Charcoal card fill inside product-feature list items
-val XaiCanvasMid = Color(0xFF363A3F)    // Nested surfaces and code style dialog surfaces
-val XaiHairline = Color(0xFF212327)     // 1px solid dividers/borders on dark surfaces
+/**
+ * SafeLock's warm, editorial palette. The light surfaces borrow the softness of
+ * paper and porcelain; the dark surfaces stay warm instead of falling to pure black.
+ */
+val SafeLockCanvas = Color(0xFFF6F2ED)
+val SafeLockSurface = Color(0xFFFFFCF8)
+val SafeLockSurfaceRaised = Color(0xFFF0EAE3)
+val SafeLockSurfaceDeep = Color(0xFFE9E1D8)
+val SafeLockOutline = Color(0xFFE2D8CF)
+val SafeLockInk = Color(0xFF29241F)
+val SafeLockInkMuted = Color(0xFF746B63)
+val SafeLockClay = Color(0xFFB64D32)
+val SafeLockClayContainer = Color(0xFFF5DDD3)
+val SafeLockSage = Color(0xFF536B5B)
+val SafeLockGold = Color(0xFFB87B3B)
 
-// Brand Core Typography Colors
-val XaiWhite = Color(0xFFFFFFFF)
-val XaiOnWhite = Color(0xFF0A0A0A)
-val XaiMuteText = Color(0xFF7D8187)
-val XaiBodyText = Color(0xFFDADBDF)
+val SafeLockDarkCanvas = Color(0xFF171512)
+val SafeLockDarkSurface = Color(0xFF201D19)
+val SafeLockDarkSurfaceRaised = Color(0xFF2A2621)
+val SafeLockDarkSurfaceDeep = Color(0xFF342F29)
+val SafeLockDarkOutline = Color(0xFF49413A)
+val SafeLockDarkInk = Color(0xFFF4EEE7)
+val SafeLockDarkInkMuted = Color(0xFFC2B8AD)
+val SafeLockDarkClay = Color(0xFFF0A184)
+val SafeLockDarkClayContainer = Color(0xFF573326)
+val SafeLockDarkSage = Color(0xFFB8C9B8)
+val SafeLockDarkGold = Color(0xFFE0B377)
 
-// xAI Light Theme Tokens
-val XaiLightCanvas = Color(0xFFF9F9FB)     // Off-white background
-val XaiLightCanvasSoft = Color(0xFFEDEDF0) // Slightly darker soft background
-val XaiLightCanvasCard = Color(0xFFFFFFFF) // Pure white card surfaces
-val XaiLightCanvasMid = Color(0xFFE2E4E9)  // Mid-gray for nested components
-val XaiLightHairline = Color(0xFFD2D4D8)   // 1px border light lines
+// Backward-compatible token names used by older screen implementations. They now
+// resolve to the SafeLock palette, so this visual migration doesn't alter behavior.
+val XaiCanvas = SafeLockDarkCanvas
+val XaiCanvasSoft = SafeLockDarkSurfaceRaised
+val XaiCanvasCard = SafeLockDarkSurface
+val XaiCanvasMid = SafeLockDarkSurfaceDeep
+val XaiHairline = SafeLockDarkOutline
+val XaiWhite = SafeLockDarkInk
+val XaiOnWhite = SafeLockDarkCanvas
+val XaiMuteText = SafeLockDarkInkMuted
+val XaiBodyText = SafeLockDarkInkMuted
+val XaiLightCanvas = SafeLockCanvas
+val XaiLightCanvasSoft = SafeLockSurfaceRaised
+val XaiLightCanvasCard = SafeLockSurface
+val XaiLightCanvasMid = SafeLockSurfaceDeep
+val XaiLightHairline = SafeLockOutline
+val XaiBlack = SafeLockInk
+val XaiLightMuteText = SafeLockInkMuted
+val XaiLightBodyText = SafeLockInk
+val XaiSunsetOrange = SafeLockClay
+val XaiSunsetSoft = Color(0xFFF0B7A0)
+val XaiDuskPurple = Color(0xFF765A83)
+val XaiTwilight = Color(0xFFD4BEDA)
+val XaiBreeze = Color(0xFFB2C6C2)
 
-val XaiBlack = Color(0xFF0A0A0A)
-val XaiLightMuteText = Color(0xFF6B7280)   // Charcoal body/mute text
-val XaiLightBodyText = Color(0xFF1F2937)   // Dark text
-
-// Cosmic Accent Tokens
-val XaiSunsetOrange = Color(0xFFFF7A17)
-val XaiSunsetSoft = Color(0xFFFFC285)
-val XaiDuskPurple = Color(0xFF7C3AED)
-val XaiTwilight = Color(0xFFC4B5FD)
-val XaiBreeze = Color(0xFFA0C3EC)
-
-// Backward-compatible bindings (mapped directly to the premium xAI palette)
 val Purple80 = XaiTwilight
 val PurpleGrey80 = XaiMuteText
 val Pink80 = XaiBreeze
-
 val Purple40 = XaiDuskPurple
 val PurpleGrey40 = XaiMuteText
 val Pink40 = XaiSunsetOrange
-
-val AppAccent = XaiSunsetOrange
-val AppTextLight = XaiBodyText
-val AppBgLight = XaiCanvas
-val AppTextDark = XaiWhite
-val AppBgDark = XaiCanvas
+val AppAccent = SafeLockClay
+val AppTextLight = SafeLockDarkInkMuted
+val AppBgLight = SafeLockDarkCanvas
+val AppTextDark = SafeLockDarkInk
+val AppBgDark = SafeLockDarkCanvas

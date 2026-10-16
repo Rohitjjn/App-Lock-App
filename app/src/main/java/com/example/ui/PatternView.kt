@@ -38,7 +38,7 @@ fun PatternView(
     modifier: Modifier = Modifier
 ) {
     val isDark = com.example.ui.theme.LocalDarkTheme.current
-    val textColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0A0A0A)
+    val textColor = MaterialTheme.colorScheme.onBackground
     val accentColor = com.example.ui.theme.LocalAccentColor.current
     var isWrong by remember { mutableStateOf(false) }
     var currentMsg by remember { mutableStateOf("Draw pattern to unlock") }
@@ -125,7 +125,7 @@ fun PatternCanvas(
     
     val isDark = com.example.ui.theme.LocalDarkTheme.current
     val accentColor = com.example.ui.theme.LocalAccentColor.current
-    val textColor = if (isDark) Color.White else Color.Black
+    val textColor = MaterialTheme.colorScheme.onBackground
 
     val dotOutlineColor = textColor.copy(alpha = 0.65f)
     val traceLineColor = accentColor

@@ -87,8 +87,8 @@ fun PinPad(
 
     val isDark = com.example.ui.theme.LocalDarkTheme.current
     val accentColor = com.example.ui.theme.LocalAccentColor.current
-    val textColor = if (isDark) Color.White else Color.Black
-    val circleButtonBg = if (isDark) Color(0xFF191919) else Color(0xFFEDEDF0)
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val circleButtonBg = MaterialTheme.colorScheme.surfaceVariant
 
     val app = context.applicationContext as com.example.AppLockApplication
     val encryptedPrefs = app.encryptedPrefs
@@ -261,17 +261,8 @@ fun PremiumKeyButton(
         label = "button_scale"
     )
 
-    val buttonBg = if (isDark) {
-        Color.White.copy(alpha = 0.08f)
-    } else {
-        Color.Black.copy(alpha = 0.05f)
-    }
-
-    val borderCol = if (isDark) {
-        Color.White.copy(alpha = 0.15f)
-    } else {
-        Color.Black.copy(alpha = 0.1f)
-    }
+    val buttonBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDark) 0.82f else 0.82f)
+    val borderCol = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
 
     Box(
         contentAlignment = Alignment.Center,
