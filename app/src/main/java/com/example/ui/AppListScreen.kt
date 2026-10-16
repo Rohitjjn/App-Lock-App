@@ -22,15 +22,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
@@ -40,6 +43,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -58,6 +62,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +74,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -78,12 +84,18 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.ui.theme.SafeLockHero
+import com.example.ui.theme.SafeLockHeroAccent
+import com.example.ui.theme.SafeLockHeroInk
+import com.example.ui.theme.SafeLockHeroMuted
+import com.example.ui.theme.SafeLockHeroRaised
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -111,6 +123,18 @@ fun AppListScreen(
         if (showLockedOnly) appItems.filter { it.isLocked } else appItems
     }
 
+    fun relockAndReport() {
+        viewModel.relockApps()
+        val message = context.getString(
+            if (viewModel.encryptedPrefs.isShieldEnabled()) R.string.relock_done
+            else R.string.relock_shield_off
+        )
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -121,157 +145,146 @@ fun AppListScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 22.dp)
+                    .padding(start = 22.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
+                SafeLockMark(
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "SafeLock",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "PERSONAL VAULT",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 1.15.sp
+                    )
+                }
+                IconButton(
+                    onClick = viewModel::refreshInstalledApps,
+                    enabled = !isLoading,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        .testTag("refresh_apps_button")
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        PageEyebrow(text = "APP LIBRARY")
-                        Spacer(modifier = Modifier.height(5.dp))
-                        Text(
-                            text = "Your apps",
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.testTag("app_list_title")
-                        )
-                        Text(
-                            text = "Choose what stays private.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.refresh_apps),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Box {
                     IconButton(
-                        onClick = viewModel::refreshInstalledApps,
-                        enabled = !isLoading,
+                        onClick = { showDropdown = true },
                         modifier = Modifier
-                            .size(46.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surface)
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                            .testTag("refresh_apps_button")
+                            .testTag("sort_menu_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.refresh_apps),
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Options and sorting",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Box {
-                        IconButton(
-                            onClick = { showDropdown = true },
-                            modifier = Modifier
-                                .size(46.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                                .testTag("sort_menu_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Tune,
-                                contentDescription = "Options and sorting",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showDropdown,
-                            onDismissRequest = { showDropdown = false },
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            val isAlphaSelected = sortOption == SortOption.ALPHABETICAL
-                            DropdownMenuItem(
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.SortByAlpha,
-                                        contentDescription = null,
-                                        tint = if (isAlphaSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                },
-                                text = {
-                                    Text(
-                                        "Alphabetical order",
-                                        fontWeight = if (isAlphaSelected) FontWeight.SemiBold else FontWeight.Normal
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (isAlphaSelected) Icon(Icons.Default.CheckCircle, contentDescription = null)
-                                },
-                                onClick = {
-                                    viewModel.sortOption.value = SortOption.ALPHABETICAL
-                                    showDropdown = false
-                                },
-                                modifier = Modifier.testTag("sort_alphabetical")
-                            )
-                            DropdownMenuItem(
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Lock,
-                                        contentDescription = null,
-                                        tint = if (sortOption == SortOption.LOCKED_FIRST) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                },
-                                text = {
-                                    Text(
-                                        "Locked apps first",
-                                        fontWeight = if (sortOption == SortOption.LOCKED_FIRST) FontWeight.SemiBold else FontWeight.Normal
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (sortOption == SortOption.LOCKED_FIRST) Icon(Icons.Default.CheckCircle, contentDescription = null)
-                                },
-                                onClick = {
-                                    viewModel.sortOption.value = SortOption.LOCKED_FIRST
-                                    showDropdown = false
-                                },
-                                modifier = Modifier.testTag("sort_locked_first")
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.relock_apps)) },
-                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                                onClick = {
-                                    viewModel.relockApps()
-                                    val message = context.getString(
-                                        if (viewModel.encryptedPrefs.isShieldEnabled()) R.string.relock_done
-                                        else R.string.relock_shield_off
-                                    )
-                                    showDropdown = false
-                                    scope.launch {
-                                        snackbarHostState.currentSnackbarData?.dismiss()
-                                        snackbarHostState.showSnackbar(message)
-                                    }
-                                },
-                                modifier = Modifier.testTag("relock_apps")
-                            )
-                        }
+                    DropdownMenu(
+                        expanded = showDropdown,
+                        onDismissRequest = { showDropdown = false },
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        val alphabetical = sortOption == SortOption.ALPHABETICAL
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.SortByAlpha,
+                                    contentDescription = null,
+                                    tint = if (alphabetical) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            text = { Text("Alphabetical order", fontWeight = if (alphabetical) FontWeight.SemiBold else FontWeight.Normal) },
+                            trailingIcon = { if (alphabetical) Icon(Icons.Default.CheckCircle, contentDescription = null) },
+                            onClick = {
+                                viewModel.sortOption.value = SortOption.ALPHABETICAL
+                                showDropdown = false
+                            },
+                            modifier = Modifier.testTag("sort_alphabetical")
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = if (sortOption == SortOption.LOCKED_FIRST) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            text = {
+                                Text(
+                                    "Locked apps first",
+                                    fontWeight = if (sortOption == SortOption.LOCKED_FIRST) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            },
+                            trailingIcon = {
+                                if (sortOption == SortOption.LOCKED_FIRST) Icon(Icons.Default.CheckCircle, contentDescription = null)
+                            },
+                            onClick = {
+                                viewModel.sortOption.value = SortOption.LOCKED_FIRST
+                                showDropdown = false
+                            },
+                            modifier = Modifier.testTag("sort_locked_first")
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.relock_apps)) },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                            onClick = {
+                                showDropdown = false
+                                relockAndReport()
+                            },
+                            modifier = Modifier.testTag("relock_apps")
+                        )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(18.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp)
+            ) {
                 AppProtectionOverview(
                     lockedCount = lockedCount,
                     totalCount = appItems.size,
                     searchQuery = searchQuery,
                     isShieldEnabled = shieldEnabled,
-                    isLoading = isLoading
+                    isLoading = isLoading,
+                    onRelock = ::relockAndReport
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(15.dp))
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { viewModel.searchQuery.value = it },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("app_search_bar"),
-                    placeholder = { Text("Search installed apps") },
+                    placeholder = { Text("Find an app in your library") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
@@ -286,10 +299,10 @@ fun AppListScreen(
                             }
                         }
                     },
-                    shape = MaterialTheme.shapes.medium,
+                    shape = RoundedCornerShape(20.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -304,7 +317,7 @@ fun AppListScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         FilterChip(
                             selected = !showLockedOnly,
                             onClick = { showLockedOnly = false },
@@ -343,20 +356,47 @@ fun AppListScreen(
                             modifier = Modifier.testTag("filter_locked_apps")
                         )
                     }
-                    Text(
-                        text = pluralStringResource(R.plurals.locked_app_count, lockedCount, lockedCount),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 11.dp, vertical = 7.dp)
-                            .testTag("locked_stats_indicator")
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = CircleShape,
+                        modifier = Modifier.testTag("locked_stats_indicator")
+                    ) {
+                        Text(
+                            text = pluralStringResource(R.plurals.locked_app_count, lockedCount, lockedCount),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 13.dp, bottom = 7.dp),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = if (showLockedOnly) "Your protected apps" else "Your app library",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.testTag("app_list_title")
+                        )
+                        Text(
+                            text = when {
+                                isLoading -> "Gathering your app collection"
+                                searchQuery.isNotBlank() -> "${displayedItems.size} matches"
+                                else -> "A little care for the apps you use most"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -366,10 +406,10 @@ fun AppListScreen(
                 when {
                     isLoading -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(9.dp)
+                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(6) { ShimmerAppRow() }
+                        items(5) { ShimmerAppRow() }
                     }
                     loadError || displayedItems.isEmpty() -> {
                         val emptyTitle = stringResource(when {
@@ -384,66 +424,57 @@ fun AppListScreen(
                             showLockedOnly -> R.string.app_list_lock_hint
                             else -> R.string.app_list_refresh_hint
                         })
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .padding(28.dp)
-                                .testTag("app_list_empty_state")
-                        ) {
-                            ProtectionIllustration(modifier = Modifier.size(112.dp))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = emptyTitle,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = emptyDescription,
-                                style = MaterialTheme.typography.bodyMedium,
-                                lineHeight = 21.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 12.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = {
-                                    when {
-                                        loadError -> viewModel.refreshInstalledApps()
-                                        searchQuery.isNotBlank() -> viewModel.searchQuery.value = ""
-                                        showLockedOnly -> showLockedOnly = false
-                                        else -> viewModel.refreshInstalledApps()
-                                    }
-                                },
-                                shape = CircleShape,
-                                modifier = Modifier.testTag("app_list_empty_action")
-                            ) {
-                                Text(stringResource(when {
-                                    loadError -> R.string.retry
-                                    searchQuery.isNotBlank() -> R.string.clear_search
-                                    showLockedOnly -> R.string.show_all_apps
-                                    else -> R.string.refresh_apps
-                                }))
+                        VaultEmptyState(
+                            title = emptyTitle,
+                            description = emptyDescription,
+                            actionText = stringResource(when {
+                                loadError -> R.string.retry
+                                searchQuery.isNotBlank() -> R.string.clear_search
+                                showLockedOnly -> R.string.show_all_apps
+                                else -> R.string.refresh_apps
+                            }),
+                            modifier = Modifier.testTag("app_list_empty_state"),
+                            actionModifier = Modifier.testTag("app_list_empty_action"),
+                            onAction = {
+                                when {
+                                    loadError -> viewModel.refreshInstalledApps()
+                                    searchQuery.isNotBlank() -> viewModel.searchQuery.value = ""
+                                    showLockedOnly -> showLockedOnly = false
+                                    else -> viewModel.refreshInstalledApps()
+                                }
                             }
-                        }
+                        )
                     }
-                    else -> LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    else -> Card(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 18.dp, vertical = 2.dp),
+                        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 14.dp, bottomEnd = 14.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        items(
-                            items = displayedItems,
-                            key = { item -> item.packageName },
-                            contentType = { "app_row" }
-                        ) { item ->
-                            val onToggled = remember(item.packageName) {
-                                { isLocked: Boolean -> viewModel.toggleAppLock(item.packageName, isLocked) }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(vertical = 5.dp),
+                            verticalArrangement = Arrangement.spacedBy(0.dp)
+                        ) {
+                            itemsIndexed(
+                                items = displayedItems,
+                                key = { _, item -> item.packageName },
+                                contentType = { _, _ -> "app_row" }
+                            ) { index, item ->
+                                val onToggled = remember(item.packageName) {
+                                    { isLocked: Boolean -> viewModel.toggleAppLock(item.packageName, isLocked) }
+                                }
+                                AppRowItem(item = item, onLockToggled = onToggled)
+                                if (index < displayedItems.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 79.dp, end = 18.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.68f)
+                                    )
+                                }
                             }
-                            AppRowItem(item = item, onLockToggled = onToggled)
                         }
                     }
                 }
@@ -458,63 +489,145 @@ private fun AppProtectionOverview(
     totalCount: Int,
     searchQuery: String,
     isShieldEnabled: Boolean,
-    isLoading: Boolean
+    isLoading: Boolean,
+    onRelock: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        shape = RoundedCornerShape(30.dp),
+        colors = CardDefaults.cardColors(containerColor = SafeLockHero),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 18.dp, top = 17.dp, bottom = 16.dp, end = 8.dp),
+                .padding(start = 19.dp, top = 17.dp, bottom = 17.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                ProtectionStatusPill(
-                    label = if (isShieldEnabled) "Shield is on" else "Shield is paused",
-                    positive = isShieldEnabled
-                )
-                Spacer(modifier = Modifier.height(11.dp))
-                Row(verticalAlignment = Alignment.Bottom) {
-                    AnimatedContent(
-                        targetState = lockedCount,
-                        label = "protected_count"
-                    ) { count ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(if (isShieldEnabled) Color(0xFF91C49E) else Color(0xFFD9A27D))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    AnimatedContent(targetState = isShieldEnabled, label = "guard_status") { active ->
                         Text(
-                            text = if (isLoading) "—" else count.toString(),
-                            style = MaterialTheme.typography.displaySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.SemiBold
+                            text = if (active) "GUARD IS ACTIVE" else "GUARD IS PAUSED",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SafeLockHeroMuted,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.05.sp
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Spacer(modifier = Modifier.height(11.dp))
+                Text(
+                    text = "Your apps,\njust for you.",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontFamily = FontFamily.Serif,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Normal,
+                        lineHeight = 27.sp,
+                        letterSpacing = (-0.45).sp
+                    ),
+                    color = SafeLockHeroInk
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    AnimatedContent(targetState = lockedCount, label = "protected_count") { count ->
+                        Text(
+                            text = if (isLoading) "—" else count.toString().padStart(2, '0'),
+                            style = MaterialTheme.typography.displaySmall.copy(fontSize = 38.sp, lineHeight = 42.sp),
+                            color = SafeLockHeroAccent,
+                            fontWeight = FontWeight.Normal
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(7.dp))
                     Text(
                         text = "apps protected",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
-                        modifier = Modifier.padding(bottom = 5.dp)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SafeLockHeroMuted,
+                        modifier = Modifier.padding(bottom = 6.dp)
                     )
                 }
                 Text(
                     text = when {
-                        isLoading -> "Loading your installed apps…"
-                        searchQuery.isNotBlank() -> "$totalCount matching apps in your library"
-                        totalCount == 0 -> "Your app list is ready when you are."
+                        isLoading -> "Gathering your app collection"
+                        searchQuery.isNotBlank() -> "$totalCount matches in your library"
+                        totalCount == 0 -> "Your app collection is ready when you are."
                         else -> "$totalCount apps in your library"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+                    color = SafeLockHeroMuted.copy(alpha = 0.84f)
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onRelock,
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SafeLockHeroAccent,
+                        contentColor = SafeLockHero
+                    ),
+                    contentPadding = PaddingValues(horizontal = 13.dp, vertical = 7.dp),
+                    modifier = Modifier.heightIn(min = 34.dp)
+                ) {
+                    Text("Lock again", style = MaterialTheme.typography.labelMedium)
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
             }
-            ProtectionIllustration(
-                modifier = Modifier.size(92.dp),
-                accent = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.62f)
+            Spacer(modifier = Modifier.width(5.dp))
+            VaultIllustration(
+                modifier = Modifier
+                    .size(104.dp)
+                    .graphicsLayer { alpha = 0.96f },
+                accent = SafeLockHeroAccent,
+                containerColor = SafeLockHeroRaised.copy(alpha = 0.72f)
             )
+        }
+    }
+}
+
+@Composable
+private fun VaultEmptyState(
+    title: String,
+    description: String,
+    actionText: String,
+    modifier: Modifier = Modifier,
+    actionModifier: Modifier = Modifier,
+    onAction: () -> Unit
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 30.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        VaultIllustration(
+            modifier = Modifier.size(138.dp),
+            accent = MaterialTheme.colorScheme.primary,
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(7.dp))
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(15.dp))
+        Button(onClick = onAction, shape = CircleShape, modifier = actionModifier) {
+            Text(actionText)
         }
     }
 }
@@ -528,106 +641,94 @@ fun AppRowItem(
 ) {
     val context = LocalContext.current.applicationContext
     val rowColor by animateColorAsState(
-        targetValue = if (item.isLocked) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
-        animationSpec = tween(220),
+        targetValue = if (item.isLocked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
+        else MaterialTheme.colorScheme.surface,
+        animationSpec = tween(240),
         label = "app_row_color"
     )
     val lockTint by animateColorAsState(
         targetValue = if (item.isLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(220),
+        animationSpec = tween(240),
         label = "app_lock_tint"
     )
 
-    Card(
-        shape = MaterialTheme.shapes.large,
-        border = BorderStroke(
-            1.dp,
-            if (item.isLocked) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-            else MaterialTheme.colorScheme.outlineVariant
-        ),
-        colors = CardDefaults.cardColors(containerColor = rowColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    Row(
         modifier = modifier
             .fillMaxWidth()
+            .background(rowColor)
             .toggleable(value = item.isLocked, role = Role.Switch, onValueChange = onLockToggled)
             .testTag("app_item_${item.packageName}")
+            .heightIn(min = 76.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val bitmapState = produceState(AppIconCache.getIconFromCache(item.packageName), item.packageName) {
-                value = withContext(Dispatchers.IO) { AppIconCache.getIcon(context, item.packageName) }
-            }
-            val bitmap = bitmapState.value
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(15.dp))
+        val bitmapState = produceState(AppIconCache.getIconFromCache(item.packageName), item.packageName) {
+            value = withContext(Dispatchers.IO) { AppIconCache.getIcon(context, item.packageName) }
+        }
+        val bitmap = bitmapState.value
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(49.dp)
+                    .clip(RoundedCornerShape(15.dp))
+            )
+        } else {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(49.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Text(
+                    text = item.name.firstOrNull()?.uppercase() ?: "A",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-            } else {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(15.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Text(
-                        text = item.name.firstOrNull()?.uppercase() ?: "A",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
             }
+        }
 
-            Spacer(modifier = Modifier.width(13.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                    text = item.packageName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Switch(
-                checked = item.isLocked,
-                onCheckedChange = null,
-                thumbContent = {
-                    AnimatedContent(
-                        targetState = item.isLocked,
-                        label = "app_switch_icon"
-                    ) { locked ->
-                        Icon(
-                            imageVector = if (locked) Icons.Default.Lock else Icons.Default.LockOpen,
-                            contentDescription = null,
-                            tint = lockTint,
-                            modifier = Modifier.size(SwitchDefaults.IconSize)
-                        )
-                    }
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.32f),
-                    uncheckedThumbColor = MaterialTheme.colorScheme.surface,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                modifier = Modifier.clearAndSetSemantics { }.testTag("app_switch_${item.packageName}")
+        Spacer(modifier = Modifier.width(13.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = item.packageName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
             )
         }
+        Spacer(modifier = Modifier.width(8.dp))
+        Switch(
+            checked = item.isLocked,
+            onCheckedChange = null,
+            thumbContent = {
+                AnimatedContent(targetState = item.isLocked, label = "app_switch_icon") { locked ->
+                    Icon(
+                        imageVector = if (locked) Icons.Default.Lock else Icons.Default.LockOpen,
+                        contentDescription = null,
+                        tint = lockTint,
+                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                    )
+                }
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.32f),
+                uncheckedThumbColor = MaterialTheme.colorScheme.surface,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            modifier = Modifier.clearAndSetSemantics { }.testTag("app_switch_${item.packageName}")
+        )
     }
 }
 
@@ -644,7 +745,7 @@ fun ShimmerAppRow() {
         label = "shimmer_alpha"
     )
     Card(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(21.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
@@ -659,7 +760,7 @@ fun ShimmerAppRow() {
         ) {
             Box(
                 Modifier
-                    .size(48.dp)
+                    .size(49.dp)
                     .clip(RoundedCornerShape(15.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
